@@ -1,0 +1,114 @@
+# git-planner configuration.
+#
+# This file is committable: it never contains a token, only the *name* of the
+# environment variable to read one from. Put the actual values in .env, which is
+# gitignored.
+
+server:
+  # Deliberately not 8090: that is files-tauri's port, and the monitor widget
+  # below watches it. Binding the same port would collide on startup.
+  bind: 127.0.0.1:8092
+  db-path: ./data/git-planner.db
+
+# GitHub identities. Each token gets its own rate-limit budget, its own cache
+# namespace and its own notification poll — so adding a work account does not
+# eat into the personal one's 5000/h.
+tokens:
+  - name: personal
+    env: GITHUB_PAT
+    label: niclasedge
+
+  - name: work
+    env: GITHUB_PAT_WORK
+    label: niclasedge-dgk
+
+github:
+  # Empty = discover everything each token can see (newest push first, archived
+  # repos skipped). Name repos explicitly to keep the request count low:
+  #   repos:
+  #     - niclasedge/kite-public
+  #     - niclasedge/glance
+  repos: []
+
+  refresh:
+    # The inbox poll is the cheap change trigger: a 304 here means we can skip a
+    # whole refresh round. GitHub's X-Poll-Interval overrides this if it is higher.
+    notifications: 60s
+
+    # Incremental: one cross-repo request for whatever changed since the last
+    # poll, merged into what we already hold. Costs one request, not one per repo.
+    issues: 5m
+
+    # Actions has no cross-repo "runs since" endpoint, so this stays a per-repo
+    # sweep — cheap because every request is conditional, but it does touch every
+    # repo that has workflows.
+    actions: 5m
+
+    repos: 30m
+
+    # Reconciliation: ask every repo directly, and refresh the GraphQL totals that
+    # feed the planner's open/in-progress/closed trio. The incremental poll is
+    # scoped to issues this account created, was assigned, was mentioned in or
+    # subscribed to; this is what catches anything outside that.
+    full: 1h
+
+  issues:
+    per-repo: 50
+    state: open
+
+  actions:
+    runs-per-repo: 10
+    # Jobs cost one request per run, and they are what draws the step dots.
+    # Set to 0 to drop the dots and the cost with them.
+    jobs-per-repo: 3
+
+pages:
+  - title: Issues
+    type: issues
+
+  # Three panes: agenda + repos, the selected repo's issues, one issue in detail.
+  - title: Planner
+    type: planner
+
+  - title: Actions
+    type: actions
+
+  # From here on the config decides. Available widget types: monitor, bookmarks,
+  # iframe, html.
+  - title: Monitoring
+    columns:
+      - size: small
+        widgets:
+          - type: monitor
+            title: Dienste
+            cache: 60s
+            sites:
+              - title: files-tauri
+                url: http://localhost:8090
+                timeout: 3s
+              - title: GitHub API
+                url: https://api.github.com
+                check-url: https://api.github.com/zen
+
+          - type: bookmarks
+            title: Schnellzugriff
+            groups:
+              - title: GitHub
+                links:
+                  - title: Notifications
+                    url: https://github.com/notifications
+                  - title: Pull Requests
+                    url: https://github.com/pulls
+                    description: alle offenen
+                  - title: Issues
+                    url: https://github.com/issues
+
+      - size: full
+        widgets:
+          - type: html
+            title: Notiz
+            source: |
+              <p style="color:#8b949e;margin:0">
+                Diese Seite kommt komplett aus <code>config.yaml</code>.
+                Weitere Seiten einfach als neuen <code>pages</code>-Eintrag anlegen.
+              </p>

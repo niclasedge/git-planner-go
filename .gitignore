@@ -1,0 +1,31 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Local cache / state
+*.db
+*.db-shm
+*.db-wal
+cache/
+data/
+
+# Build output
+/git-planner
+/dist/
+/bin/
+
+# Logs
+logs/
+*.log
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Go
+*.test
+*.out
+vendor/

@@ -1,0 +1,82 @@
+{{ define "page-widgets" }}
+{{ with .WidgetPage }}
+<div class="cols">
+  {{ range .Columns }}
+  <div class="col c-{{ .Size }}">
+    {{ range .Widgets }}{{ render "widget-frame" . }}{{ end }}
+  </div>
+  {{ end }}
+</div>
+{{ end }}
+{{ end }}
+
+
+{{ define "widget-frame" }}
+<section class="card widget" id="w{{ .ID }}">
+  <header class="card-h">
+    <span class="card-t">{{ .Title }}</span>
+    <span class="card-x">
+      <span class="ago">{{ relTime .UpdatedAt }}</span>
+      <button class="btn tiny" type="button" title="neu laden"
+              hx-get="/htmx/widget/{{ .ID }}" hx-target="#w{{ .ID }}" hx-swap="outerHTML">↻</button>
+    </span>
+  </header>
+  {{ with .Err }}<div class="banner">{{ . }}</div>{{ end }}
+  <div class="card-b">{{ widget . }}</div>
+</section>
+{{ end }}
+
+
+{{ define "widget-monitor" }}
+<div class="list">
+  {{ $only := .FailuresOnly }}
+  {{ range .Sites }}
+  {{ if or (not $only) (not .Up) }}
+  <div class="row site">
+    <span class="dot o-{{ .Outcome }}" title="{{ .Outcome }}"></span>
+    <div class="row-main">
+      {{ if .URL }}
+      <a class="row-t" href="{{ .URL }}" target="_blank" rel="noopener">{{ .Title }}</a>
+      {{ else }}
+      <span class="row-t">{{ .Title }}</span>
+      {{ end }}
+      {{ with .Error }}<div class="run-sub err">{{ truncate 80 . }}</div>{{ end }}
+    </div>
+    <div class="row-meta">
+      {{ if .Status }}<span class="num">{{ .Status }}</span>{{ end }}
+      <span class="d">{{ dur .Latency }}</span>
+    </div>
+  </div>
+  {{ end }}
+  {{ end }}
+</div>
+{{ end }}
+
+
+{{ define "widget-bookmarks" }}
+{{ range .Groups }}
+<div class="bm-g">
+  {{ with .Title }}<h3 class="bm-t">{{ . }}</h3>{{ end }}
+  <div class="bm-l">
+    {{ range .Links }}
+    <a class="bm" href="{{ .URL }}" target="_blank" rel="noopener">
+      {{ with .Icon }}<span class="bm-i">{{ . }}</span>{{ end }}
+      <span class="bm-n">{{ .Title }}</span>
+      {{ with .Description }}<span class="bm-d">{{ . }}</span>{{ end }}
+    </a>
+    {{ end }}
+  </div>
+</div>
+{{ end }}
+{{ end }}
+
+
+{{ define "widget-iframe" }}
+<iframe class="frame" src="{{ .Source }}" style="height:{{ .Height }}px"
+        loading="lazy" referrerpolicy="no-referrer"></iframe>
+{{ end }}
+
+
+{{ define "widget-html" }}
+{{ .Content }}
+{{ end }}

@@ -1,0 +1,118 @@
+{{ define "page-actions" }}
+{{ with .Actions }}
+<form id="filters" class="filters"
+      hx-get="/htmx/actions" hx-target="#actions" hx-swap="innerHTML"
+      hx-trigger="change" hx-push-url="true">
+
+  <select class="in" name="repo" aria-label="Repository">
+    <option value="">alle Repos</option>
+    {{ $sel := .Filter.Repo }}
+    {{ range .RepoNames }}<option value="{{ . }}" {{ if eq . $sel }}selected{{ end }}>{{ . }}</option>{{ end }}
+  </select>
+
+  {{ if gt (len .Tokens) 1 }}
+  <select class="in" name="token" aria-label="Account">
+    <option value="">alle Accounts</option>
+    {{ $tsel := .Filter.Token }}
+    {{ range .Tokens }}<option value="{{ .Name }}" {{ if eq .Name $tsel }}selected{{ end }}>{{ .Label }}</option>{{ end }}
+  </select>
+  {{ end }}
+
+  <div class="seg" role="group" aria-label="Status">
+    {{ $st := .Filter.Status }}
+    <label class="seg-i{{ if eq $st "all" }} on{{ end }}">
+      <input type="radio" name="status" value="all" {{ if eq $st "all" }}checked{{ end }}>alle</label>
+    <label class="seg-i{{ if eq $st "failure" }} on{{ end }}">
+      <input type="radio" name="status" value="failure" {{ if eq $st "failure" }}checked{{ end }}>Fehler</label>
+    <label class="seg-i{{ if eq $st "running" }} on{{ end }}">
+      <input type="radio" name="status" value="running" {{ if eq $st "running" }}checked{{ end }}>läuft</label>
+    <label class="seg-i{{ if eq $st "success" }} on{{ end }}">
+      <input type="radio" name="status" value="success" {{ if eq $st "success" }}checked{{ end }}>ok</label>
+  </div>
+
+  <button class="btn" type="button"
+          hx-post="/refresh/actions" hx-target="#actions" hx-swap="innerHTML"
+          hx-include="#filters" hx-indicator="#spin">neu laden</button>
+  <span id="spin" class="spin htmx-indicator"></span>
+</form>
+
+<div id="actions"
+     hx-get="/htmx/actions" hx-target="this" hx-swap="innerHTML"
+     hx-include="#filters" hx-trigger="every 30s">
+  {{ render "actions-body" . }}
+</div>
+{{ end }}
+{{ end }}
+
+
+{{ define "actions-body" }}
+<section class="stats">
+  <div class="stat"><b>{{ .Runs }}</b><span class="lbl">Runs</span></div>
+  <div class="stat{{ if ge .SuccessRate 90 }} good{{ else if ge .SuccessRate 0 }} bad{{ end }}">
+    <b>{{ pctText .SuccessRate }}</b><span class="lbl">Erfolgsrate</span>
+  </div>
+  <div class="stat{{ if .Failure }} bad{{ end }}"><b>{{ .Failure }}</b><span class="lbl">Fehler</span></div>
+  <div class="stat{{ if .Running }} live{{ end }}"><b>{{ .Running }}</b><span class="lbl">aktiv</span></div>
+  <div class="stat"><b>{{ len .Repos }}</b><span class="lbl">Repos</span></div>
+</section>
+
+{{ if .Warning }}<div class="banner">{{ .Warning }}</div>{{ end }}
+
+{{ if not .Repos }}
+  {{ if .Filter.Any }}
+    {{ template "empty" "Keine Runs für diesen Filter." }}
+  {{ else }}
+    {{ template "empty" "Noch keine Workflow-Runs — der erste Refresh läuft." }}
+  {{ end }}
+{{ else }}
+<div class="repos">
+  {{ range .Repos }}
+  {{ $max := .MaxDuration }}
+  <section class="card proj">
+    <header class="proj-h">
+      <span class="ico o-{{ with .LastRun }}{{ .Outcome }}{{ else }}unknown{{ end }}"></span>
+      <a class="pname" href="https://github.com/{{ .Repo }}/actions" target="_blank" rel="noopener">{{ .Repo }}</a>
+      <span class="proj-rate{{ if ge .SuccessRate 90 }} good{{ else if ge .SuccessRate 0 }} bad{{ end }}">{{ pctText .SuccessRate }}</span>
+    </header>
+
+    <div class="spark" aria-hidden="true">
+      {{ range .Chronological }}
+      <a class="bar o-{{ .Outcome }}" style="height:{{ barHeight .Duration $max }}px"
+         href="{{ .HTMLURL }}" target="_blank" rel="noopener"
+         title="#{{ .RunNumber }} {{ .Title }} — {{ .Outcome }} — {{ dur .Duration }}"></a>
+      {{ end }}
+    </div>
+
+    <div class="list">
+      {{ range .Runs }}
+      <div class="run">
+        <span class="dot o-{{ .Outcome }}" title="{{ .Outcome }}"></span>
+        <div class="run-main">
+          <a class="run-t" href="{{ .HTMLURL }}" target="_blank" rel="noopener">{{ truncate 64 .Title }}</a>
+          <div class="run-sub">
+            <span class="branch">{{ .HeadBranch }}</span>
+            <span class="sep">·</span>
+            <span>{{ .Event }}</span>
+            <span class="sep">·</span>
+            <span class="sha">{{ .ShortSHA }}</span>
+          </div>
+          {{ with .Dots }}
+          <div class="steps">
+            {{ range . }}<span class="sdot o-{{ .Outcome }}" title="{{ .Label }} — {{ .Outcome }}"></span>{{ end }}
+          </div>
+          {{ end }}
+        </div>
+        <div class="run-meta">
+          <span class="d">{{ dur .Duration }}</span>
+          <span class="ago" title="{{ .CreatedAt.Format "2006-01-02 15:04" }}">{{ relTime .CreatedAt }}</span>
+        </div>
+      </div>
+      {{ end }}
+    </div>
+  </section>
+  {{ end }}
+</div>
+{{ end }}
+
+{{ template "meta-line" . }}
+{{ end }}

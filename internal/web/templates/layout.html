@@ -1,0 +1,74 @@
+{{ define "layout" }}<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ .Title }} · git-planner</title>
+<script>
+// Before the stylesheet, on purpose: setting data-theme after first paint makes
+// every light-mode reload flash dark.
+(function () {
+  try {
+    var t = localStorage.getItem('gp_theme');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+  } catch (e) { /* private mode — dark default is fine */ }
+})();
+function toggleTheme() {
+  var h = document.documentElement, dark = h.getAttribute('data-theme') === 'dark';
+  h.setAttribute('data-theme', dark ? 'light' : 'dark');
+  try { localStorage.setItem('gp_theme', dark ? 'light' : 'dark'); } catch (e) {}
+}
+</script>
+<link rel="stylesheet" href="{{ static "css/app.css" }}">
+<script src="{{ static "js/htmx.min.js" }}"></script>
+</head>
+<body{{ if .Full }} class="full"{{ end }}>
+
+<header class="top">
+  <a class="brand" href="/">git<span>·</span>planner</a>
+  <nav class="nav">
+    {{ range .Nav }}
+    <a class="nav-i{{ if .Active }} on{{ end }}" href="{{ .URL }}">{{ .Title }}</a>
+    {{ end }}
+  </nav>
+  <a class="nav-i ghost" href="/api/status" target="_blank" rel="noopener">status</a>
+  {{/* Both glyphs are rendered and CSS picks one: the server cannot know the
+       theme, and letting JS set the label would show the wrong one until it runs. */}}
+  <button class="icon-btn" onclick="toggleTheme()" title="Theme wechseln" aria-label="Theme wechseln"
+    ><span class="t-dark">🌙</span><span class="t-light">☀️</span></button>
+</header>
+
+{{/* A full-height page brings its own <main>: the panes are grid children of
+     this container, so it cannot be one of them. */}}
+{{ if .Full }}
+<div class="panes">{{ render .Body . }}</div>
+{{ else }}
+<main class="wrap">{{ render .Body . }}</main>
+{{ end }}
+
+</body>
+</html>
+{{ end }}
+
+
+{{/* Shared bits ------------------------------------------------------------ */}}
+
+{{ define "meta-line" }}
+<div class="meta">
+  <span>aktualisiert {{ relTime .UpdatedAt }}</span>
+  <span class="sep">·</span>
+  <span title="Antworten aus dem Cache — kosten kein Rate-Limit">{{ .CacheHits }}× 304</span>
+  <span class="sep">·</span>
+  <span title="Neu geladene Antworten">{{ .Fetched }}× 200</span>
+  {{ if .Errors }}
+  <span class="sep">·</span>
+  <span class="warn" title="{{ range .Errors }}{{ . }}&#10;{{ end }}">{{ len .Errors }} Fehler</span>
+  {{ end }}
+</div>
+{{ end }}
+
+{{ define "empty" }}
+<div class="empty">
+  <p>{{ . }}</p>
+</div>
+{{ end }}

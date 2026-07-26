@@ -1,0 +1,382 @@
+{{ define "page-planner" }}
+{{ with .Planner }}
+
+{{/* Left: account switch, cross-repo agenda, repo list. ------------------- */}}
+<aside class="pane pane-repos">
+
+  {{ if gt (len .Tokens) 1 }}
+  <div class="side-top">
+    <div class="seg">
+      <a class="seg-i{{ if not .Filter.Token }} on{{ end }}" href="{{ .TokenURL "" }}">alle</a>
+      {{ $sel := .Filter.Token }}
+      {{ range .Tokens }}
+      <a class="seg-i{{ if eq .Name $sel }} on{{ end }}" href="{{ $.Planner.TokenURL .Name }}">{{ .Label }}</a>
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
+
+  {{ if .Agenda }}
+  <div class="agenda-wrap">
+    <div class="pane-header">📅 Agenda <span class="ag-kpi" title="offene Issues mit Target-Date">🎯 {{ .AgendaN }}</span></div>
+    <div class="agenda-list">
+      {{ range .Agenda }}
+      <div class="agenda-head{{ if .Overdue }} ov{{ end }}">{{ .Title }}</div>
+      {{ range .Items }}
+      <a class="agenda-item" href="{{ .URL }}" title="{{ .Repo }}#{{ .Number }}">
+        <span class="due-badge {{ if .Red }}due-red{{ else }}due-blue{{ end }}">{{ .Badge }}</span>
+        <span class="ag-title">{{ .Title }}</span>
+        <span class="ag-repo">{{ .Short }}</span>
+      </a>
+      {{ end }}
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
+
+  <div class="repo-section">
+    <div class="pane-header">
+      Repositories
+      <span class="ph-n">{{ len .Repos }}</span>
+      <a href="{{ .EmptyURL }}" title="Repos ohne offene Issues">{{ if .Filter.Empty }}nur aktive{{ else }}alle{{ end }}</a>
+    </div>
+    <div class="repo-list">
+      {{ range .Repos }}
+      <a class="repo-item{{ if .Active }} active{{ end }}" href="{{ .URL }}" title="{{ .FullName }}">
+        <div class="ri-top">
+          <span class="name">{{ .Name }}</span>
+          {{ if or .Open .Closed }}
+          <span class="ri-trio" title="offen / in Arbeit / geschlossen">{{ .Open }}/{{ .WIP }}/{{ .Closed }}</span>
+          {{ else }}
+          <span class="count">0</span>
+          {{ end }}
+          {{ if .Due }}<span class="ri-td" title="Issues mit Target-Date">🎯 {{ .Due }}</span>{{ end }}
+          {{ if .PRs }}<span class="ri-pr" title="offene Pull Requests">🔀 {{ .PRs }}</span>{{ end }}
+        </div>
+        {{ if or .Open .Closed }}
+        <div class="seg-bar">
+          {{ if .Plain }}<span class="sg-plain" style="flex:{{ .Plain }}"></span>{{ end }}
+          {{ if .WIP }}<span class="sg-wip" style="flex:{{ .WIP }}"></span>{{ end }}
+          {{ if .Blocked }}<span class="sg-blocked" style="flex:{{ .Blocked }}"></span>{{ end }}
+          {{ if .Closed }}<span class="sg-closed" style="flex:{{ .Closed }}"></span>{{ end }}
+        </div>
+        {{ end }}
+      </a>
+      {{ else }}
+      <div class="empty" style="margin:12px 8px"><p>Noch keine Daten — der erste Refresh läuft.</p></div>
+      {{ end }}
+    </div>
+  </div>
+</aside>
+
+<div class="resizer" id="resizerA" title="Seitenleiste breiter ziehen · Doppelklick setzt zurück"></div>
+
+{{/* Middle: the selected repo only. ------------------------------------- */}}
+{{ render "planner-mid" . }}
+
+<div class="resizer" id="resizerB" title="Detailspalte breiter ziehen · Doppelklick setzt zurück"></div>
+
+{{/* Right: one issue. Swapped on its own so the list keeps its scroll. --- */}}
+<section class="pane pane-detail" id="paneDetail">
+  <a class="back-btn" href="#" onclick="plannerBack(event)">&larr; zurück</a>
+  <div id="detailContent">{{ render "planner-detail" . }}</div>
+</section>
+
+<script>
+// Row highlighting is cosmetic, so it stays on the client: asking the server to
+// re-render the list just to move one border would throw away its scroll.
+//
+// Delegated from the document, not from the list: saving an issue replaces the
+// middle pane out of band, and a listener bound to the old element would go with
+// it.
+document.addEventListener('click', function (e) {
+  var row = e.target.closest('#issueList .issue-item');
+  if (!row) return;
+  document.querySelectorAll('#issueList .issue-item.active').forEach(function (el) { el.classList.remove('active'); });
+  row.classList.add('active');
+  document.getElementById('paneDetail').classList.add('show'); // no-op unless narrow
+});
+function plannerBack(e) { e.preventDefault(); document.getElementById('paneDetail').classList.remove('show'); }
+
+// Column widths: applied from localStorage, dragged on the two handles, reset on
+// double-click. Same keys as the reference dashboard, so a width set there is
+// still the width here.
+(function () {
+  var root = document.documentElement;
+  var KEY_S = 'gp_col_sidebar', KEY_D = 'gp_col_detail';
+  var sv = parseInt(localStorage.getItem(KEY_S)); if (sv) root.style.setProperty('--col-sidebar', sv + 'px');
+  var dv = parseInt(localStorage.getItem(KEY_D)); if (dv) root.style.setProperty('--col-detail', dv + 'px');
+  var clamp = function (v, mn, mx) { return Math.max(mn, Math.min(mx, v)); };
+
+  function resizable(handleId, varName, storeKey, paneSel, sign, min, maxFn) {
+    var el = document.getElementById(handleId); if (!el) return;
+    el.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      var pane = document.querySelector(paneSel); if (!pane) return;
+      var startX = e.clientX, startW = pane.getBoundingClientRect().width;
+      el.classList.add('dragging'); document.body.classList.add('col-resizing');
+      el.setPointerCapture(e.pointerId);
+      var move = function (ev) {
+        root.style.setProperty(varName, clamp(startW + sign * (ev.clientX - startX), min, maxFn()) + 'px');
+      };
+      var up = function () {
+        try { el.releasePointerCapture(e.pointerId); } catch (_) {}
+        el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up);
+        el.classList.remove('dragging'); document.body.classList.remove('col-resizing');
+        localStorage.setItem(storeKey,
+          String(Math.round(parseFloat(root.style.getPropertyValue(varName)) || startW)));
+      };
+      el.addEventListener('pointermove', move); el.addEventListener('pointerup', up);
+    });
+    el.addEventListener('dblclick', function () {
+      root.style.removeProperty(varName); localStorage.removeItem(storeKey);
+    });
+  }
+  // Handle A drags the sidebar wider; handle B drags the detail pane narrower,
+  // which is why its sign is inverted — the middle pane absorbs the difference.
+  resizable('resizerA', '--col-sidebar', KEY_S, '.pane-repos', 1, 180, function () { return Math.min(480, innerWidth * 0.4); });
+  resizable('resizerB', '--col-detail', KEY_D, '.pane-detail', -1, 360, function () { return Math.min(900, innerWidth * 0.6); });
+})();
+</script>
+{{ end }}
+{{ end }}
+
+
+{{/* The middle pane, as its own template so a save can swap it out of band: the
+     row still has to show the title that was just written. */}}
+{{ define "planner-mid" }}
+<main class="pane pane-issues" id="paneIssues"{{ if .OOB }} hx-swap-oob="true"{{ end }}>
+  <div class="pane-header">
+    {{ if .Selected }}{{ .Selected.Name }}{{ else }}Issues{{ end }}
+    <span class="ph-n">{{ len .Issues }}</span>
+  </div>
+
+  <div class="issue-list" id="issueList">
+    {{ if .PRs }}
+    <div class="sec-head pr">🔀 Pull Requests <span class="sec-n">{{ len .PRs }}</span></div>
+    {{ range .PRs }}{{ template "planner-row" (topRow $ .) }}{{ end }}
+    {{ end }}
+
+    {{ range .Sections }}
+    <div class="sec-head{{ if eq .Title "Wayfinder" }} wf{{ end }}">{{ with .Icon }}{{ . }} {{ end }}{{ .Title }} <span class="sec-n">{{ len .Rows }}</span></div>
+    {{ range .Rows }}{{ template "planner-row" (row $ .) }}{{ end }}
+    {{ end }}
+
+    {{ if and (not .Sections) (not .PRs) }}
+      {{ if .Selected }}
+        {{ template "empty" "Keine offenen Issues in diesem Repo." }}
+      {{ else }}
+        {{ template "empty" "Kein Repository ausgewählt." }}
+      {{ end }}
+    {{ end }}
+  </div>
+</main>
+{{ end }}
+
+
+{{/* The answer to a successful save: the read-only pane for the detail target,
+     plus the middle pane as an out-of-band swap. */}}
+{{ define "planner-saved" }}
+{{ render "planner-detail" . }}
+{{ render "planner-mid" . }}
+{{ end }}
+
+
+{{/* One row in the middle pane. Takes the pair built by the "row" func, because
+     a range body has no way back to the page data it needs for the URLs. */}}
+{{ define "planner-row" }}
+{{ $depth := .Row.Depth }}{{ $guides := .Row.Guides }}{{ $d := .Data }}{{ with .Row.Issue }}
+{{ $due := $d.DueBadge . }}{{ $lb := $d.RowLabels . }}
+<a class="issue-item{{ if and $d.Detail (eq .Number $d.Detail.Number) }} active{{ end }}{{ if $depth }} ir-child{{ end }}"
+   href="{{ $d.IssueURL . }}"
+   hx-get="{{ $d.DetailURL . }}" hx-target="#detailContent" hx-swap="innerHTML"
+   hx-push-url="{{ $d.IssueURL . }}">
+  {{ if $guides }}<span class="ir-tree" aria-hidden="true">{{ range $guides }}<span class="tg tg-{{ . }}"></span>{{ end }}</span>{{ end }}
+  <div class="ir-title">
+    <span class="ir-num">#{{ .Number }}</span>
+    <span class="ir-text">{{ .Title }}</span>
+    {{ if $lb.Shown }}<span class="ir-tags">
+      {{ range $lb.Shown }}<span class="label" style="{{ labelStyle .Color }}">{{ .Name }}</span>{{ end }}
+      {{ if $lb.Extra }}<span class="label lb-more">+{{ $lb.Extra }}</span>{{ end }}
+    </span>{{ end }}
+    <span class="ir-right">
+      {{ if .Sub.Total }}<span class="ir-prog" title="{{ .Sub.Completed }} von {{ .Sub.Total }} Sub-Issues erledigt">
+        <span class="ir-prog-n">{{ .Sub.Completed }}/{{ .Sub.Total }}</span>
+        <span class="ir-bar"><span style="width:{{ subPct .Sub.Completed .Sub.Total }}%"></span></span>
+      </span>{{ end }}
+      {{ if $due.Badge }}<span class="due-badge {{ if $due.Red }}due-red{{ else }}due-blue{{ end }}">{{ $due.Badge }}</span>{{ end }}
+      {{ if .Comments }}<span class="ir-cmt">{{ .Comments }}💬</span>{{ end }}
+      <span class="ir-time" title="{{ .UpdatedAt.Format "2006-01-02 15:04" }}">{{ relTime .UpdatedAt }}</span>
+    </span>
+  </div>
+</a>
+{{ end }}
+{{ end }}
+
+
+{{ define "planner-detail" }}
+{{ if .Detail }}
+{{ $d := . }}{{ with .Detail }}
+<article class="detail">
+  <h2>{{ .Title }}</h2>
+  <div class="meta-row">
+    <span class="dot {{ if eq .State "open" }}open{{ end }}" title="{{ .State }}"></span>
+    <span class="num">{{ .Repo }}#{{ .Number }}</span>
+    {{ $due := $d.DueBadge . }}
+    {{ if $due.Badge }}
+    <span class="due-badge {{ if $due.Red }}due-red{{ else }}due-blue{{ end }}">🎯 {{ .Due.Format "2.1.2006" }}</span>
+    {{ end }}
+    {{ if .Milestone }}<span title="Milestone">🏁 {{ .Milestone.Title }}</span>{{ end }}
+    <span>{{ .User.Login }}</span>
+    <span title="{{ .CreatedAt.Format "2006-01-02 15:04" }}">geöffnet {{ relTime .CreatedAt }}</span>
+    <span title="{{ .UpdatedAt.Format "2006-01-02 15:04" }}">aktualisiert {{ relTime .UpdatedAt }}</span>
+    {{ range .Assignees }}<span class="who" title="{{ .Login }}">{{ initials .Login }}</span>{{ end }}
+    {{ if not .IsPR }}
+    <button class="btn tiny" type="button" title="Titel, Status, Datum, Tags, Body ändern"
+            hx-get="{{ $d.EditURL . }}" hx-target="#detailContent" hx-swap="innerHTML">✎ bearbeiten</button>
+    {{ end }}
+    <a class="btn tiny" href="{{ .HTMLURL }}" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+
+  {{ with $d.Warning }}<div class="note">{{ . }}</div>{{ end }}
+
+  {{ if .Labels }}
+  <div class="labels">
+    {{ range .Labels }}<span class="label" style="{{ labelStyle .Color }}">{{ .Name }}</span>{{ end }}
+  </div>
+  {{ end }}
+
+  <div class="body">{{ markdown .BodyClean }}</div>
+
+  {{/* The thread is a second request on purpose: it needs the comments endpoint,
+       and the pane should already be readable while that is in flight. */}}
+  <div hx-get="{{ $d.CommentsURL . }}" hx-trigger="load" hx-swap="outerHTML"></div>
+</article>
+{{ end }}
+{{ else }}
+<div class="detail">{{ template "empty" "Kein Issue ausgewählt." }}</div>
+{{ end }}
+{{ end }}
+
+
+{{/* The edit form. Every field here is written straight to GitHub on save. */}}
+{{ define "planner-edit" }}
+<article class="detail">
+  {{ with .Err }}<div class="err">{{ . }}</div>{{ end }}
+  {{ if .Issue.Number }}
+  <form class="ed" hx-post="{{ .PostURL }}" hx-target="#detailContent" hx-swap="innerHTML"
+        hx-indicator="#edSaving">
+    <div class="ed-head">
+      <span class="num">{{ .Repo }}#{{ .Number }}</span>
+      <span class="ed-actions">
+        <span class="htmx-indicator" id="edSaving">speichert …</span>
+        <button class="btn tiny" type="button" hx-get="{{ .DetailBack }}"
+                hx-target="#detailContent" hx-swap="innerHTML">Abbrechen</button>
+        <button class="btn tiny primary" type="submit">Speichern</button>
+      </span>
+    </div>
+
+    <label class="ed-f">
+      <span class="ed-l">Titel</span>
+      <input class="in" type="text" name="title" value="{{ .Issue.Title }}" required>
+    </label>
+
+    <div class="ed-grid">
+      <label class="ed-f">
+        <span class="ed-l">Status</span>
+        <select class="in" name="state">
+          <option value="open"{{ if eq .Issue.State "open" }} selected{{ end }}>offen</option>
+          <option value="closed"{{ if eq .Issue.State "closed" }} selected{{ end }}>geschlossen</option>
+        </select>
+      </label>
+
+      <label class="ed-f">
+        <span class="ed-l">Target-Date</span>
+        <input class="in" type="date" name="due" value="{{ .Due }}">
+        <span class="ed-hint">
+          {{ if .MilestoneDue }}Milestone: {{ .MilestoneDue }}{{ else }}wird als <code>target date:</code> in den Body geschrieben{{ end }}
+        </span>
+      </label>
+
+      <label class="ed-f">
+        <span class="ed-l">Milestone</span>
+        <select class="in" name="milestone">
+          <option value="0">— keiner —</option>
+          {{ $cur := 0 }}{{ if .Issue.Milestone }}{{ $cur = .Issue.Milestone.Number }}{{ end }}
+          {{ range .Milestones }}
+          <option value="{{ .Number }}"{{ if eq .Number $cur }} selected{{ end }}>{{ .Title }}</option>
+          {{ end }}
+          {{ if and .Issue.Milestone (not .Milestones) }}
+          <option value="{{ $cur }}" selected>{{ .Issue.Milestone.Title }}</option>
+          {{ end }}
+        </select>
+      </label>
+
+      <label class="ed-f">
+        <span class="ed-l">Zugewiesen</span>
+        <input class="in" type="text" name="assignees" value="{{ .Assignees }}"
+               list="edPeople" placeholder="login, login2">
+        <datalist id="edPeople">{{ range .People }}<option value="{{ . }}"></option>{{ end }}</datalist>
+      </label>
+    </div>
+
+    <div class="ed-f">
+      <span class="ed-l">Tags</span>
+      <div class="ed-labels">
+        {{ range .Labels }}
+        <label class="ed-lb{{ if .On }} on{{ end }}">
+          <input type="checkbox" name="labels" value="{{ .Name }}"{{ if .On }} checked{{ end }}>
+          <span class="label" style="{{ labelStyle .Color }}">{{ .Name }}</span>
+        </label>
+        {{ else }}
+        <span class="ed-hint">Keine Tags im Repo lesbar.</span>
+        {{ end }}
+      </div>
+      <div class="ed-newlb">
+        <input class="in" type="text" name="newlabel" placeholder="neuer Tag">
+        <input class="ed-color" type="color" name="newcolor" value="#8caaee" title="Farbe des neuen Tags">
+        <span class="ed-hint">wird beim Speichern im Repo angelegt</span>
+      </div>
+    </div>
+
+    <label class="ed-f">
+      <span class="ed-l">Body <span class="ed-hint">(ohne die Target-Date-Zeile — die kommt aus dem Datumsfeld)</span></span>
+      <textarea class="in ed-body" name="body" rows="16" spellcheck="false">{{ .Body }}</textarea>
+    </label>
+  </form>
+  {{ end }}
+</article>
+{{ end }}
+
+
+{{ define "planner-comments" }}
+<div class="cmts" id="cmts">
+  <div class="cmt-head">💬 Kommentare {{ if .Comments }}<span class="ph-n">{{ len .Comments }}</span>{{ end }}</div>
+  {{ with .Err }}<div class="err">{{ . }}</div>{{ end }}
+  {{ with .Note }}<div class="note">{{ . }}</div>{{ end }}
+
+  {{ range .Comments }}
+  <article class="cmt">
+    <div class="cmt-meta">
+      <span class="who" title="{{ .User.Login }}">{{ initials .User.Login }}</span>
+      <b>{{ .User.Login }}</b>
+      <span title="{{ .CreatedAt.Format "2006-01-02 15:04" }}">{{ relTime .CreatedAt }}</span>
+      {{ if .Edited }}<span class="ed-hint">bearbeitet</span>{{ end }}
+      <a class="cmt-lnk" href="{{ .HTMLURL }}" target="_blank" rel="noopener">↗</a>
+    </div>
+    <div class="body">{{ markdown .Body }}</div>
+  </article>
+  {{ end }}
+
+  {{ if .Number }}
+  <form class="cmt-form" hx-post="{{ .PostURL }}" hx-target="#cmts" hx-swap="outerHTML"
+        hx-indicator="#cmtSending">
+    <textarea class="in" name="comment" rows="3" placeholder="Kommentar schreiben …"></textarea>
+    <div class="cmt-send">
+      <span class="htmx-indicator" id="cmtSending">sendet …</span>
+      <button class="btn tiny primary" type="submit">Kommentieren</button>
+    </div>
+  </form>
+  {{ end }}
+</div>
+{{ end }}

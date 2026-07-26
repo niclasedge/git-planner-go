@@ -1,0 +1,857 @@
+/* git-planner — Catppuccin (Mocha / Latte).
+   Self-hosted so the dashboard works offline; font-display:swap paints in
+   system-ui immediately and swaps Plex in when it arrives. */
+
+@font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../fonts/ibm-plex-sans-400.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 500; font-display: swap;
+  src: url('../fonts/ibm-plex-sans-500.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('../fonts/ibm-plex-sans-600.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url('../fonts/ibm-plex-sans-700.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../fonts/ibm-plex-mono-400.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 500; font-display: swap;
+  src: url('../fonts/ibm-plex-mono-500.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('../fonts/ibm-plex-mono-600.woff2') format('woff2'); }
+
+/* Two layers on purpose. The Catppuccin names are the palette and are the only
+   thing a theme swaps; the semantic names below are what the rest of this file
+   uses. Adding a theme therefore means adding one block, not auditing 400 lines. */
+:root {
+  --bg2: #181825;   /* mantle  */
+  --base: #1e1e2e;  /* base    */
+  --bg3: #313244;   /* surface0 */
+  --crust: #11111b;
+  --fg: #cdd6f4;
+  --fg2: #a6adc8;
+  --fg3: #6c7086;
+  --faint: #585b70;
+  --line: #313244;
+  --line2: #45475a;
+  --blue: #89b4fa;
+  --blue-hi: #b4befe;
+  --grn: #a6e3a1;
+  --yel: #f9e2af;
+  --rd: #f38ba8;
+  --purple: #cba6f7;
+  --teal: #94e2d5;
+  --peach: #fab387;
+  --sky: #89dceb;
+  --accent-bg: rgba(137, 180, 250, 0.12);
+  --green-bg: rgba(166, 227, 161, 0.13);
+  --yellow-bg: rgba(249, 226, 175, 0.13);
+  --red-bg: rgba(243, 139, 168, 0.13);
+  --purple-bg: rgba(203, 166, 247, 0.16);
+  --peach-bg: rgba(250, 179, 135, 0.16);
+  --red-line: rgba(243, 139, 168, 0.35);
+  --accent-line: rgba(137, 180, 250, 0.30);
+  --lift: rgba(255, 255, 255, 0.03); /* the barely-there hover tint */
+}
+
+html[data-theme="light"] {
+  --bg2: #e6e9ef;
+  --base: #eff1f5;
+  --bg3: #ccd0da;
+  --crust: #dce0e8;
+  --fg: #4c4f69;
+  --fg2: #5c5f77;
+  --fg3: #8c8fa1;
+  --faint: #9ca0b0;
+  --line: #ccd0da;
+  --line2: #bcc0cc;
+  --blue: #1e66f5;
+  --blue-hi: #04a5e5;
+  --grn: #40a02b;
+  --yel: #df8e1d;
+  --rd: #d20f39;
+  --purple: #8839ef;
+  --teal: #179299;
+  --peach: #fe640b;
+  --sky: #04a5e5;
+  --accent-bg: rgba(30, 102, 245, 0.10);
+  --green-bg: rgba(64, 160, 43, 0.12);
+  --yellow-bg: rgba(223, 142, 29, 0.13);
+  --red-bg: rgba(210, 15, 57, 0.10);
+  --purple-bg: rgba(136, 57, 239, 0.12);
+  --peach-bg: rgba(254, 100, 11, 0.13);
+  --red-line: rgba(210, 15, 57, 0.35);
+  --accent-line: rgba(30, 102, 245, 0.28);
+  --lift: rgba(0, 0, 0, 0.03); /* a white tint on a light page is invisible */
+}
+
+/* Semantic layer — theme-independent. Note the ladder runs mantle → base →
+   surface0: the page sits *below* the cards, so a card lifts off it. */
+:root {
+  --bg: var(--bg2);
+  --surface: var(--base);
+  --surface-2: var(--bg3);
+  --border: var(--line);
+  --border-2: var(--line2);
+  --text: var(--fg);
+  --muted: var(--fg2);
+  --accent: var(--blue);
+  --accent-hi: var(--blue-hi);
+  --green: var(--grn);
+  --red: var(--rd);
+  --amber: var(--yel);
+  --skip: var(--fg3);
+
+  --r: 9px;
+  --r-sm: 7px;
+  --r-lg: 12px;
+  --gap: 14px;
+  --font: 'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 var(--font);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: var(--surface-2);
+  border-radius: 8px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
+::-webkit-scrollbar-track { background: transparent; }
+
+a { color: inherit; text-decoration: none; }
+a:hover { color: var(--accent); }
+
+/* ---- chrome ------------------------------------------------------------- */
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 22px;
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand { font-weight: 600; letter-spacing: -0.01em; }
+.brand span { color: var(--accent); }
+
+.nav { display: flex; gap: 4px; margin-right: auto; }
+
+.nav-i {
+  padding: 5px 11px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.nav-i:hover { background: var(--surface-2); color: var(--text); }
+.nav-i.on { background: var(--surface-2); color: var(--text); }
+.nav-i.ghost { font-size: 12px; }
+
+.icon-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  padding: 4px 7px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+/* --border-2, not --border: in Catppuccin the hover fill and the default border
+   are the same surface0, so a --border outline would vanish into its own fill. */
+.icon-btn:hover { background: var(--surface-2); border-color: var(--border-2); }
+
+/* The theme glyph is chosen by CSS, not by JS — see layout.html. */
+.t-light { display: none; }
+html[data-theme="light"] .t-dark { display: none; }
+html[data-theme="light"] .t-light { display: inline; }
+
+.wrap {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 22px 60px;
+}
+
+/* ---- filters ------------------------------------------------------------ */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.in {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font: inherit;
+  font-size: 13px;
+  max-width: 260px;
+}
+.in:focus { outline: none; border-color: var(--accent); }
+.in.search { flex: 1 1 220px; max-width: 340px; }
+
+.btn {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn:hover { background: var(--surface-2); border-color: var(--border-2); }
+.btn.tiny { padding: 2px 7px; font-size: 12px; }
+/* The one button in a form that writes to GitHub. */
+.btn.primary { background: var(--accent-bg); border-color: var(--accent-line); color: var(--accent); font-weight: 600; }
+.btn.primary:hover { background: var(--accent-bg); border-color: var(--accent); }
+
+/* segmented status switch */
+.seg {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.seg-i {
+  padding: 6px 11px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  border-right: 1px solid var(--border-2); /* must stay visible against the active segment's fill */
+}
+.seg-i:last-child { border-right: 0; }
+.seg-i:hover { color: var(--text); }
+.seg-i.on { background: var(--surface-2); color: var(--text); }
+.seg-i input { position: absolute; opacity: 0; pointer-events: none; }
+
+.spin {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+.htmx-indicator { opacity: 0; }
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator { opacity: 1; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- stats row --------------------------------------------------------- */
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.stat {
+  flex: 1 1 120px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 14px;
+}
+.stat b {
+  display: block;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.stat .lbl {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.stat.good b { color: var(--green); }
+.stat.bad b { color: var(--red); }
+.stat.live b { color: var(--amber); }
+.stat.muted b { color: var(--muted); font-size: 20px; }
+
+/* ---- cards ------------------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.card-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--lift), transparent);
+}
+.card-t { font-weight: 600; font-size: 13px; }
+.card-x { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.card-b { padding: 12px 14px; }
+
+/* ---- generic rows ----------------------------------------------------- */
+
+.list > * + * { border-top: 1px solid var(--border); }
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 14px;
+}
+.row:hover { background: var(--lift); }
+
+.row-main { flex: 1; min-width: 0; }
+.row-t {
+  font-weight: 500;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.row-meta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--muted);
+  padding-top: 1px;
+}
+.row-meta .repo { font-family: var(--mono); font-size: 11px; }
+.row-meta .num { font-family: var(--mono); font-size: 11px; }
+.row-meta .ago { min-width: 52px; text-align: right; }
+
+.who {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* status dots — one vocabulary shared by issues, runs and monitors */
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 6px;
+  background: var(--skip);
+}
+.dot.open { background: var(--green); }
+
+.o-success { background: var(--green); }
+.o-failure,
+.o-timed_out,
+.o-startup_failure { background: var(--red); }
+.o-action_required { background: var(--amber); }
+.o-running { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+.o-queued { background: var(--muted); }
+.o-cancelled,
+.o-skipped,
+.o-neutral,
+.o-unknown { background: var(--skip); }
+
+@keyframes pulse { 50% { opacity: 0.35; } }
+
+/* labels */
+
+.labels { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 8px; }
+.label {
+  font-size: 10px;
+  line-height: 1.6;
+  padding: 0 6px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+/* ---- actions page ------------------------------------------------------ */
+
+.repos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gap);
+}
+@media (max-width: 900px) {
+  .repos { grid-template-columns: 1fr; }
+}
+
+.proj-h {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.ico {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pname {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.proj-rate {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.proj-rate.good { color: var(--green); }
+.proj-rate.bad { color: var(--red); }
+
+/* sparkline: bar height is duration, colour is outcome */
+.spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 44px;
+  padding: 0 14px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.bar {
+  flex: 1 1 0;
+  min-width: 3px;
+  max-width: 14px;
+  border-radius: 2px 2px 0 0;
+  opacity: 0.85;
+}
+.bar:hover { opacity: 1; outline: 1px solid var(--text); }
+
+.run {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 14px;
+}
+.run:hover { background: var(--lift); }
+.run-main { flex: 1; min-width: 0; }
+.run-t {
+  font-size: 13px;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.run-sub {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.run-sub.err { color: var(--red); }
+.branch,
+.sha { font-family: var(--mono); }
+.sep { opacity: 0.4; }
+
+/* step dots: one per step of every job in the run */
+.steps { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+.sdot {
+  width: 11px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--skip);
+}
+
+.run-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.run-meta .d { font-family: var(--mono); }
+
+/* ---- widget pages ------------------------------------------------------ */
+
+.cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--gap);
+  align-items: start;
+}
+.col { display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
+.col.c-full { grid-column: span 2; }
+@media (max-width: 800px) {
+  .col.c-full { grid-column: span 1; }
+}
+
+.widget .card-b:empty { display: none; }
+.widget .list { margin: -12px -14px; }
+
+.frame { width: 100%; border: 0; border-radius: 6px; background: var(--bg); }
+
+.bm-g + .bm-g { margin-top: 14px; }
+.bm-t {
+  margin: 0 0 7px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 600;
+}
+.bm-l { display: flex; flex-direction: column; gap: 2px; }
+.bm {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 7px;
+  border-radius: 6px;
+}
+.bm:hover { background: var(--surface-2); }
+.bm-n { font-weight: 500; }
+.bm-d { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+/* ---- messages ---------------------------------------------------------- */
+
+.banner {
+  background: var(--red-bg);
+  border: 1px solid var(--red-line);
+  color: var(--red);
+  border-radius: var(--r);
+  padding: 9px 13px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.empty {
+  border: 1px dashed var(--border);
+  border-radius: var(--r);
+  padding: 34px 20px;
+  text-align: center;
+  color: var(--muted);
+}
+.empty p { margin: 0; }
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.meta .warn { color: var(--amber); cursor: help; }
+
+
+/* Planner ------------------------------------------------------------------
+   Three panes that fill the viewport instead of a scrolling document. Only this
+   page opts in, via body.full — every other page keeps the centred .wrap.
+   Surfaces follow the reference: the middle pane is the content surface and the
+   two side panes are chrome, one step darker, so the work sits in the light. */
+
+body.full { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+body.full .top { flex: 0 0 auto; }
+
+.panes {
+  display: grid;
+  grid-template-columns: var(--col-sidebar, 256px) 6px minmax(320px, 1fr) 6px var(--col-detail, 540px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.pane { overflow-y: auto; }
+/* The sidebar is a fixed-height flex column: agenda and repo list scroll
+   independently so both headings stay put. */
+.pane-repos { background: var(--bg); overflow: hidden; display: flex; flex-direction: column; padding: 6px 0 0; }
+.pane-issues { background: var(--surface); }
+.pane-detail { background: var(--bg); }
+
+/* Drag handles are grid tracks of their own, so dragging never reflows the panes
+   around them. Double-click resets — see planner.html. */
+.resizer { position: relative; cursor: col-resize; background: transparent; }
+.resizer::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px;
+  transform: translateX(-50%); background: var(--border);
+  transition: background .12s, width .12s;
+}
+.resizer:hover::before, .resizer.dragging::before { background: var(--accent); width: 2px; }
+body.col-resizing { cursor: col-resize; user-select: none; }
+
+.pane-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 16px 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--fg3);
+  position: sticky; top: 0; z-index: 2; background: inherit;
+}
+.pane-issues .pane-header { background: var(--surface); }
+.pane-header .ph-n { margin-left: auto; font-family: var(--mono); font-size: 11px; letter-spacing: 0; }
+.pane-header a { color: var(--accent); text-decoration: none; letter-spacing: 0; text-transform: none; font-size: 10.5px; }
+.pane-header a:hover { color: var(--accent-hi); }
+
+/* Token switch sits above everything: it decides what the rest of the pane is. */
+.side-top { flex: 0 0 auto; padding: 6px 8px 8px; border-bottom: 1px solid var(--border); }
+.side-top .seg { width: 100%; }
+a.seg-i { text-decoration: none; text-align: center; }
+
+/* Agenda ---------------------------------------------------------------- */
+.agenda-wrap {
+  flex: 0 0 auto; display: flex; flex-direction: column;
+  max-height: 42%; min-height: 0;
+  padding: 0 8px; margin-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.agenda-wrap > .pane-header { flex: 0 0 auto; padding: 12px 8px 10px; }
+.ag-kpi {
+  margin-left: auto; font-family: var(--mono); font-size: 10px; font-weight: 600;
+  color: var(--peach); background: var(--peach-bg);
+  border-radius: 20px; padding: 2px 8px; letter-spacing: 0; text-transform: none;
+}
+.agenda-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
+.agenda-head {
+  position: sticky; top: 0; z-index: 1; background: var(--bg);
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--fg3);
+}
+.agenda-head.ov { color: var(--red); }
+.agenda-item {
+  display: flex; align-items: center; gap: 9px; padding: 6px 8px;
+  border-radius: var(--r-sm); font-size: 12.5px; text-decoration: none;
+}
+.agenda-item:hover { background: var(--surface); }
+.agenda-item .ag-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.agenda-item .ag-repo {
+  flex: 0 0 auto; font-size: 10.5px; color: var(--faint); max-width: 82px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.due-badge {
+  flex: 0 0 auto; font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px;
+}
+.due-red { color: var(--red); background: var(--red-bg); }
+.due-blue { color: var(--accent); background: var(--accent-bg); }
+
+/* Repo list ------------------------------------------------------------- */
+.repo-section { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.repo-section > .pane-header { flex: 0 0 auto; }
+.repo-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 8px 24px; display: flex; flex-direction: column; gap: 3px; }
+.repo-item { display: block; padding: 8px 10px; border-radius: var(--r); border: 1px solid transparent; text-decoration: none; }
+.repo-item:hover { background: var(--surface); }
+.repo-item.active { background: var(--accent-bg); border-color: var(--accent-line); }
+.repo-item .ri-top { display: flex; align-items: center; gap: 8px; }
+.repo-item .name {
+  flex: 1; min-width: 0; font-size: 12.5px; font-weight: 500; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.repo-item.active .name { color: var(--text); font-weight: 600; }
+.repo-item .count { flex: 0 0 auto; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.repo-item .ri-trio { flex: 0 0 auto; font-family: var(--mono); font-size: 10.5px; color: var(--fg3); }
+.repo-item .ri-pr,
+.repo-item .ri-td {
+  flex: 0 0 auto; font-family: var(--mono); font-size: 10px; font-weight: 600;
+  border-radius: 20px; padding: 1px 7px;
+}
+.repo-item .ri-pr { color: var(--purple); background: var(--purple-bg); }
+.repo-item .ri-td { color: var(--peach); background: var(--peach-bg); }
+
+/* One flex child per bucket: the widths are the counts, so the bar needs no
+   percentages and stays right when a count is zero. */
+.seg-bar { display: flex; gap: 2px; height: 4px; margin-top: 7px; border-radius: 3px; overflow: hidden; background: var(--surface-2); }
+.seg-bar > span { display: block; min-width: 0; }
+.sg-plain { background: var(--accent); }
+.sg-wip { background: var(--amber); }
+.sg-blocked { background: var(--red); }
+.sg-closed { background: var(--green); }
+
+/* Issue list (middle) --------------------------------------------------- */
+.issue-list { padding: 0 8px 24px; }
+.sec-head {
+  display: flex; align-items: center; gap: 8px; padding: 16px 16px 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg3);
+}
+.sec-head.pr { color: var(--purple); }
+.sec-head.wf { color: var(--accent); }
+.sec-head .sec-n { margin-left: auto; font-family: var(--mono); font-size: 11px; letter-spacing: 0; }
+/* stretch, so the tree gutter spans the row's full content height */
+.issue-item { display: flex; align-items: stretch; padding: 9px 12px; border-radius: var(--r); border: 1px solid transparent; text-decoration: none; cursor: pointer; }
+.issue-item:hover { background: var(--bg); border-color: var(--border); }
+.issue-item.active { background: var(--bg); border-color: var(--border-2); }
+.ir-title { flex: 1 1 auto; display: flex; align-items: center; gap: 8px; font-size: 13px; min-height: 20px; overflow: hidden; }
+.ir-num { flex: 0 0 auto; font-family: var(--mono); font-size: 12px; color: var(--fg3); }
+.ir-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.ir-right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.ir-time { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.ir-cmt { font-size: 11px; color: var(--faint); }
+.ir-tags { display: flex; gap: 4px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.lb-more { background: var(--surface-2); color: var(--fg3); }
+
+/* Tree gutter for nested sub-issues: one column per level, drawn from the guides
+   the server computed. Indentation alone leaves you counting pixels to see who
+   belongs to whom; a trunk with a branch per child does not.
+
+   The ±10px overshoot is what makes consecutive rows read as one line: between
+   two rows' content boxes sit 9px of padding and a 1px border on each side, so a
+   column has to reach 10px past its own box at both ends to meet its neighbour. */
+.ir-tree { flex: 0 0 auto; display: flex; }
+.tg { position: relative; flex: 0 0 auto; width: 15px; }
+.tg-line::before, .tg-tee::before, .tg-elbow::before {
+  content: ''; position: absolute; left: 7px; width: 1px; background: var(--border-2);
+}
+.tg-line::before, .tg-tee::before { top: -10px; bottom: -10px; }
+/* The last child's trunk stops where its own branch leaves it. */
+.tg-elbow::before { top: -10px; height: calc(50% + 10px); }
+.tg-tee::after, .tg-elbow::after {
+  content: ''; position: absolute; left: 7px; top: 50%; width: 8px; height: 1px; background: var(--border-2);
+}
+/* A child's number recedes: the tree already says it is subordinate. */
+.ir-child .ir-num { color: var(--faint); }
+
+/* Progress bar for parent issues. Analogous to .seg-bar in the sidebar but
+   narrower — it lives inside a single-line row. */
+.ir-prog { display: flex; align-items: center; gap: 6px; }
+.ir-prog-n { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.ir-bar { width: 42px; height: 4px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.ir-bar > span { display: block; height: 100%; background: var(--green); }
+
+/* Detail (right) -------------------------------------------------------- */
+.detail { padding: 22px 26px 40px; }
+.detail h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; margin: 0 0 12px; color: var(--text); }
+.detail .meta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); margin-bottom: 14px; }
+.detail .meta-row .num { font-family: var(--mono); color: var(--fg3); }
+/* .dot is nudged down for the issue rows on page 1, where it sits beside two
+   lines of text. Here the row is centred already. */
+.detail .meta-row .dot { margin-top: 0; }
+.detail .labels { margin-bottom: 18px; }
+.detail .body { font-size: 13px; line-height: 1.65; color: var(--muted); margin: 20px 0 0; overflow-wrap: anywhere; }
+.detail .body > :first-child { margin-top: 0; }
+.detail .body img { max-width: 100%; }
+.detail .body p { margin: 0 0 10px; }
+.detail .body h1 { font-size: 16px; font-weight: 600; margin: 18px 0 8px; color: var(--text); }
+.detail .body h2 { font-size: 15px; font-weight: 600; margin: 22px 0 10px; color: var(--text); }
+.detail .body h3, .detail .body h4, .detail .body h5, .detail .body h6 {
+  font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  margin: 22px 0 8px; color: var(--accent);
+}
+.detail .body ul, .detail .body ol { margin: 0 0 10px; padding-left: 20px; }
+.detail .body li { margin: 3px 0; }
+.detail .body li input { margin-right: 6px; }
+.detail .body code { background: var(--crust); padding: 1px 5px; border-radius: 4px; font-family: var(--mono); font-size: 12px; color: var(--sky); }
+.detail .body pre { background: var(--crust); padding: 12px 14px; border-radius: var(--r); overflow-x: auto; margin: 0 0 12px; }
+.detail .body pre code { background: none; padding: 0; color: var(--muted); }
+.detail .body a { color: var(--accent); }
+.detail .body blockquote { margin: 8px 0; padding: 2px 0 2px 12px; border-left: 3px solid var(--border-2); color: var(--fg3); }
+.detail .body table { border-collapse: collapse; font-size: 12px; margin: 8px 0; display: block; overflow-x: auto; }
+.detail .body th, .detail .body td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; }
+
+/* An API refusal and a local hint look different on purpose: the first needs
+   acting on, the second is a remark about what was saved. */
+.detail .err, .detail .note {
+  border-radius: var(--r); padding: 8px 11px; font-size: 12.5px; margin: 0 0 14px; line-height: 1.5;
+}
+.detail .err { background: var(--red-bg); border: 1px solid var(--red-line); color: var(--red); }
+.detail .note { background: var(--yellow-bg); border: 1px solid transparent; color: var(--amber); }
+
+/* Edit form ------------------------------------------------------------- */
+.ed { display: flex; flex-direction: column; gap: 14px; }
+.ed .in { max-width: none; width: 100%; }
+.ed-head { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); }
+.ed-head .num { font-family: var(--mono); color: var(--fg3); }
+.ed-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.ed-f { display: flex; flex-direction: column; gap: 5px; }
+.ed-l {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg3);
+}
+.ed-hint { font-size: 11px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--faint); }
+.ed-hint code { font-family: var(--mono); font-size: 11px; color: var(--sky); }
+/* auto-fit rather than a fixed count: this pane is user-resizable */
+.ed-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.ed-labels {
+  display: flex; flex-wrap: wrap; gap: 6px; max-height: 132px; overflow-y: auto;
+  padding: 8px; border: 1px solid var(--border); border-radius: var(--r); background: var(--bg);
+}
+/* The checkbox is the control, the coloured chip is the affordance — so the box
+   itself stays visible but small, and unchecked chips fade back. */
+.ed-lb { display: flex; align-items: center; gap: 5px; cursor: pointer; opacity: 0.45; }
+.ed-lb.on, .ed-lb:hover { opacity: 1; }
+.ed-lb input { margin: 0; accent-color: var(--accent); }
+.ed-newlb { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.ed-newlb .in { flex: 0 1 200px; width: auto; }
+/* Not a .in: the swatch is the whole control, so it gets no text padding and a
+   fixed size the .ed-newlb flex rule cannot stretch. */
+.ed-color {
+  flex: 0 0 32px; width: 32px; height: 30px; padding: 2px; cursor: pointer;
+  background: var(--bg-2); border: 1px solid var(--border-2); border-radius: var(--r);
+}
+.ed-color::-webkit-color-swatch-wrapper { padding: 0; }
+.ed-color::-webkit-color-swatch { border: none; border-radius: 2px; }
+.ed-body { font-family: var(--mono); font-size: 12px; line-height: 1.6; resize: vertical; }
+
+/* Comments -------------------------------------------------------------- */
+.cmts { margin-top: 28px; border-top: 1px solid var(--border); padding-top: 16px; }
+.cmt-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg3);
+}
+.cmt {
+  border: 1px solid var(--border); border-radius: var(--r); background: var(--surface);
+  padding: 10px 13px; margin-bottom: 10px;
+}
+.cmt-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg3); }
+.cmt-meta b { color: var(--muted); font-weight: 600; }
+.cmt-lnk { margin-left: auto; color: var(--fg3); text-decoration: none; }
+.cmt-lnk:hover { color: var(--accent); }
+.cmt .body { margin-top: 8px; }
+.cmt-form { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.cmt-form .in { max-width: none; width: 100%; resize: vertical; }
+.cmt-send { display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 12px; color: var(--fg3); }
+
+/* Narrow: the detail pane becomes an overlay the back link closes. Below that
+   the sidebar goes too — two panes is the floor for this layout. */
+.back-btn { display: none; padding: 12px 16px; background: var(--bg); color: var(--accent); text-decoration: none; font-size: 12px; }
+@media (max-width: 1100px) {
+  .panes { grid-template-columns: var(--col-sidebar, 256px) 6px minmax(0, 1fr); }
+  #resizerB, .pane-detail { display: none; }
+  .pane-detail.show { display: block; position: fixed; inset: 0; z-index: 50; background: var(--bg); overflow-y: auto; }
+  .pane-detail.show .back-btn { display: block; }
+}
+@media (max-width: 760px) {
+  .panes { grid-template-columns: minmax(0, 1fr); }
+  #resizerA, .pane-repos { display: none; }
+}

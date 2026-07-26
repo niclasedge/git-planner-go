@@ -1,0 +1,98 @@
+{{ define "page-issues" }}
+{{ with .Issues }}
+<form id="filters" class="filters"
+      hx-get="/htmx/issues" hx-target="#issues" hx-swap="innerHTML"
+      hx-trigger="change, keyup changed delay:300ms from:input[name='q']"
+      hx-push-url="true">
+
+  <input class="in search" type="search" name="q" value="{{ .Filter.Query }}"
+         placeholder="Titel, Repo oder #Nummer" autocomplete="off">
+
+  <select class="in" name="repo" aria-label="Repository">
+    <option value="">alle Repos</option>
+    {{ $sel := .Filter.Repo }}
+    {{ range .RepoNames }}<option value="{{ . }}" {{ if eq . $sel }}selected{{ end }}>{{ . }}</option>{{ end }}
+  </select>
+
+  {{ if gt (len .Tokens) 1 }}
+  <select class="in" name="token" aria-label="Account">
+    <option value="">alle Accounts</option>
+    {{ $tsel := .Filter.Token }}
+    {{ range .Tokens }}<option value="{{ .Name }}" {{ if eq .Name $tsel }}selected{{ end }}>{{ .Label }}</option>{{ end }}
+  </select>
+  {{ end }}
+
+  <select class="in" name="label" aria-label="Label">
+    <option value="">alle Labels</option>
+    {{ $lsel := .Filter.Label }}
+    {{ range .Labels }}<option value="{{ . }}" {{ if eq . $lsel }}selected{{ end }}>{{ . }}</option>{{ end }}
+  </select>
+
+  <select class="in" name="assignee" aria-label="Assignee">
+    <option value="">Assignee: alle</option>
+    <option value="none" {{ if eq .Filter.Assignee "none" }}selected{{ end }}>ohne Assignee</option>
+  </select>
+
+  <button class="btn" type="button"
+          hx-post="/refresh/issues" hx-target="#issues" hx-swap="innerHTML"
+          hx-include="#filters" hx-indicator="#spin">neu laden</button>
+  <span id="spin" class="spin htmx-indicator"></span>
+</form>
+
+<div id="issues"
+     hx-get="/htmx/issues" hx-target="this" hx-swap="innerHTML"
+     hx-include="#filters" hx-trigger="every 60s">
+  {{ render "issues-body" . }}
+</div>
+{{ end }}
+{{ end }}
+
+
+{{ define "issues-body" }}
+<section class="stats">
+  <div class="stat"><b>{{ len .Issues }}</b><span class="lbl">Issues</span></div>
+  <div class="stat"><b>{{ .Repos }}</b><span class="lbl">Repos</span></div>
+  <div class="stat"><b>{{ .Assigned }}</b><span class="lbl">zugewiesen</span></div>
+  <div class="stat{{ if .Stale }} bad{{ end }}"><b>{{ .Stale }}</b><span class="lbl">&gt; 30 Tage still</span></div>
+  {{ if .Filter.Any }}
+  <div class="stat muted"><b>{{ .Total }}</b><span class="lbl">ungefiltert</span></div>
+  {{ end }}
+</section>
+
+{{ if .Warning }}<div class="banner">{{ .Warning }}</div>{{ end }}
+
+{{ if not .Issues }}
+  {{ if .Filter.Any }}
+    {{ template "empty" "Keine Issues für diesen Filter." }}
+  {{ else }}
+    {{ template "empty" "Noch keine Daten — der erste Refresh läuft." }}
+  {{ end }}
+{{ else }}
+<div class="card">
+  <div class="list">
+    {{ range .Issues }}
+    <div class="row">
+      <span class="dot open" title="{{ .State }}"></span>
+      <div class="row-main">
+        <a class="row-t" href="{{ .HTMLURL }}" target="_blank" rel="noopener">{{ .Title }}</a>
+        {{ if .Labels }}
+        <span class="labels">
+          {{ range .Labels }}<span class="label" style="{{ labelStyle .Color }}">{{ .Name }}</span>{{ end }}
+        </span>
+        {{ end }}
+      </div>
+      <div class="row-meta">
+        {{ range .Assignees }}<span class="who" title="{{ .Login }}">{{ initials .Login }}</span>{{ end }}
+        {{ if .Comments }}<span class="num" title="Kommentare">{{ .Comments }}💬</span>{{ end }}
+        <span class="repo">{{ .Repo }}</span>
+        <span class="num">#{{ .Number }}</span>
+        <span class="ago" title="{{ .UpdatedAt.Format "2006-01-02 15:04" }}">{{ relTime .UpdatedAt }}</span>
+      </div>
+    </div>
+    {{ end }}
+  </div>
+</div>
+{{ end }}
+
+{{ template "meta-line" . }}
+{{ end }}
