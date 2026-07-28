@@ -28,10 +28,13 @@
 
 
 {{ define "widget-monitor" }}
+{{ $only := .FailuresOnly }}
+{{ range .Groups }}
+{{ $sites := .Visible $only }}
+{{ if $sites }}
+{{ with .Title }}<div class="divider"><span>{{ . }}</span></div>{{ end }}
 <div class="list">
-  {{ $only := .FailuresOnly }}
-  {{ range .Sites }}
-  {{ if or (not $only) (not .Up) }}
+  {{ range $sites }}
   <div class="row site">
     <span class="dot o-{{ .Outcome }}" title="{{ .Outcome }}"></span>
     <div class="row-main">
@@ -48,8 +51,130 @@
     </div>
   </div>
   {{ end }}
+</div>
+{{ end }}
+{{ end }}
+{{ end }}
+
+
+{{ define "widget-semaphore" }}
+{{ $wid := .ID }}
+{{ with .Report }}
+<div class="sema-sum">
+  {{ if .Failing }}
+  <span class="sema-n bad">{{ .Failing }} rot</span>
+  {{ else }}
+  <span class="sema-n ok">alles grün</span>
+  {{ end }}
+  <span class="sema-c">{{ .Total }} Templates</span>
+  {{ with .HistoryURL }}<a class="sema-lnk" href="{{ . }}" target="_blank" rel="noopener">History →</a>{{ end }}
+</div>
+
+{{ range .Bad }}
+<div class="sema-f">
+  <div class="row">
+    <span class="dot o-{{ .Outcome }}" title="{{ .Status }}"></span>
+    <div class="row-main">
+      <a class="row-t" href="{{ .URL }}" target="_blank" rel="noopener">{{ .Template }}</a>
+      <div class="run-sub err">#{{ .Task.ID }} · {{ .Status }} · {{ .When }}{{ if .Duration }} · {{ dur .Duration }}{{ end }}</div>
+    </div>
+  </div>
+  {{ with .Excerpt }}<pre class="sema-log">{{ range . }}{{ . }}&#10;{{ end }}</pre>{{ end }}
+  <details class="sema-x" hx-get="/htmx/widget/{{ $wid }}/log/{{ .Task.ID }}"
+           hx-trigger="toggle once" hx-target="find .sema-full" hx-swap="innerHTML">
+    <summary class="sema-more">vollständiges Log</summary>
+    <div class="sema-full"><div class="sema-wait">Log lädt …</div></div>
+  </details>
+</div>
+{{ end }}
+
+{{ if and .Bad .OK }}<div class="divider"><span>übrige Templates</span></div>{{ end }}
+
+<div class="list">
+  {{ range .OK }}
+  <details class="sema-x" hx-get="/htmx/widget/{{ $wid }}/log/{{ .Task.ID }}"
+           hx-trigger="toggle once" hx-target="find .sema-full" hx-swap="innerHTML">
+    <summary class="row">
+      <span class="dot o-{{ .Outcome }}" title="{{ .Status }}"></span>
+      <div class="row-main"><span class="row-t">{{ .Template }}</span></div>
+      <div class="row-meta">
+        {{ if .Duration }}<span class="num">{{ dur .Duration }}</span>{{ end }}
+        <span class="ago">{{ .When }}</span>
+      </div>
+    </summary>
+    <div class="sema-full"><div class="sema-wait">Log lädt …</div></div>
+  </details>
   {{ end }}
 </div>
+{{ else }}
+<div class="empty"><p>noch keine Daten</p></div>
+{{ end }}
+{{ end }}
+
+
+{{ define "semaphore-log" }}
+<div class="sema-lh">
+  <span>#{{ .TaskID }} · {{ .Status }}{{ if .Dropped }} · erste {{ .Dropped }} Zeilen ausgelassen{{ end }}</span>
+  {{ with .URL }}<a class="sema-lnk" href="{{ . }}" target="_blank" rel="noopener">in Semaphore ↗</a>{{ end }}
+</div>
+{{ with .Err }}
+<div class="banner">{{ . }}</div>
+{{ else }}
+{{ if .Lines }}<pre class="sema-log">{{ range .Lines }}{{ . }}&#10;{{ end }}</pre>
+{{ else }}<div class="sema-wait">kein Output</div>{{ end }}
+{{ end }}
+{{ end }}
+
+
+{{ define "widget-ollama" }}
+{{ $models := .Models }}
+{{ if $models }}
+<div class="sema-sum">
+  {{ with .Active }}
+  <span class="sema-n ok">{{ len . }} geladen</span>
+  {{ else }}
+  <span class="sema-n idle">kein Modell geladen</span>
+  {{ end }}
+  <span class="sema-c">{{ len $models }} Modelle</span>
+  {{ with .Version }}<span class="sema-c">v{{ . }}</span>{{ end }}
+</div>
+
+{{ range .Active }}
+<div class="olm-a">
+  <div class="row">
+    <span class="dot o-success" title="geladen"></span>
+    <div class="row-main">
+      <span class="row-t">{{ .BaseName }}{{ with .Tag }} <span class="olm-t">{{ . }}</span>{{ end }}</span>
+      <div class="run-sub">
+        {{ if .Age }}läuft seit {{ if .AtStartup }}mind. {{ end }}{{ dur .Age }} · {{ end }}{{ size .VRAM }} im Speicher
+      </div>
+      <div class="run-sub olm-d">
+        {{ with .Params }}{{ . }}{{ end }}{{ with .Quant }} · {{ . }}{{ end }}{{ if .Context }} · {{ .Context }} Kontext{{ end }}{{ with .UnloadAt }} · entlädt {{ . }}{{ end }}
+      </div>
+    </div>
+  </div>
+</div>
+{{ end }}
+
+{{ $idle := .Idle }}
+{{ if and .Active $idle }}<div class="divider"><span>auf der Platte</span></div>{{ end }}
+
+<div class="list">
+  {{ range $idle }}
+  <div class="row">
+    <span class="dot o-idle" title="nicht geladen"></span>
+    <div class="row-main">
+      <span class="row-t">{{ .BaseName }}{{ with .Tag }} <span class="olm-t">{{ . }}</span>{{ end }}</span>
+    </div>
+    <div class="row-meta">
+      <span class="ago">{{ size .Size }}</span>
+    </div>
+  </div>
+  {{ end }}
+</div>
+{{ else }}
+<div class="empty"><p>keine Modelle</p></div>
+{{ end }}
 {{ end }}
 
 

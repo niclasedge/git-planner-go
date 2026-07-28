@@ -2,12 +2,17 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"html/template"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/niclasedge/git-planner-go/internal/gh"
+	"github.com/niclasedge/git-planner-go/internal/panel"
 )
 
 // The templates are parsed at startup, so a typo in one of them is a crash on
@@ -200,5 +205,111 @@ func TestRenderPlannerDetail_NoEditForPR(t *testing.T) {
 	}
 	if !strings.Contains(out, "/htmx/planner/comments?") {
 		t.Fatalf("comments should be lazily loaded:\n%s", out)
+	}
+}
+
+// The log fragment is what an expanded run swaps in. Field names come from
+// panel.LogView, so executing it here catches a rename on the Go side.
+func TestRenderSemaphoreLog(t *testing.T) {
+	out := render(t, "semaphore-log", &panel.LogView{
+		Template: "Deploy", TaskID: 313, Status: "error",
+		URL:   "http://example.invalid/project/1/history",
+		Lines: []string{"PLAY [all]", "fatal: boom <&>"}, Dropped: 12,
+	})
+
+	for _, want := range []string{"#313", "error", "erste 12 Zeilen ausgelassen", "PLAY [all]", "in Semaphore"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q:\n%s", want, out)
+		}
+	}
+	// Log output is foreign text; it must arrive escaped, not as markup.
+	if strings.Contains(out, "boom <&>") {
+		t.Fatalf("log lines must be escaped:\n%s", out)
+	}
+}
+
+// A failed fetch shows the reason instead of an empty box.
+func TestRenderSemaphoreLog_Error(t *testing.T) {
+	out := render(t, "semaphore-log", &panel.LogView{TaskID: 7, Status: "success", Err: "GET /output: 500"})
+	if !strings.Contains(out, "GET /output: 500") {
+		t.Fatalf("error missing:\n%s", out)
+	}
+	if strings.Contains(out, "sema-log") {
+		t.Fatalf("no log block expected on error:\n%s", out)
+	}
+}
+
+// ollamaAPI fakes the three endpoints the widget reads. Driving the widget
+// through its own Update keeps the production type free of test-only setters and
+// covers the JSON decoding and the merge on the way to the template.
+func ollamaAPI(t *testing.T) *httptest.Server {
+	t.Helper()
+	// expires_at nine minutes out, so the countdown in the template is stable.
+	expires := time.Now().Add(9 * time.Minute).Format(time.RFC3339Nano)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/tags":
+			io.WriteString(w, `{"models":[
+				{"name":"gpt-oss:20b","size":13793441244,"modified_at":"2026-07-27T23:34:10Z",
+				 "details":{"family":"gptoss","parameter_size":"20.9B","quantization_level":"MXFP4"}},
+				{"name":"gemma4:12b","size":9977569963,"modified_at":"2026-06-07T18:36:22Z",
+				 "details":{"family":"gemma","parameter_size":"12B","quantization_level":"MXFP4"}}]}`)
+		case "/api/ps":
+			io.WriteString(w, `{"models":[{"name":"gpt-oss:20b","size":13338924809,"size_vram":13338924809,
+				"context_length":65536,"expires_at":"`+expires+`",
+				"details":{"family":"gptoss","parameter_size":"20.9B","quantization_level":"MXFP4"}}]}`)
+		case "/api/version":
+			io.WriteString(w, `{"version":"0.32.5"}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestRenderWidgetOllama(t *testing.T) {
+	srv := ollamaAPI(t)
+	o := &panel.Ollama{URL: srv.URL}
+	if err := o.Init(); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	o.Update(context.Background())
+
+	out := render(t, "widget-ollama", o)
+	for _, want := range []string{"1 geladen", "2 Modelle", "v0.32.5", "gpt-oss", "20b",
+		"13,3 GB im Speicher", "65536 Kontext", "entlädt ", "läuft seit", "auf der Platte", "gemma4", "10,0 GB"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q:\n%s", want, out)
+		}
+	}
+}
+
+// Nothing loaded is the normal resting state, not an error — and without a
+// loaded block there is nothing for the divider to separate.
+func TestRenderWidgetOllama_NothingLoaded(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/tags":
+			io.WriteString(w, `{"models":[{"name":"a:7b","size":100000000,"details":{"parameter_size":"7B"}}]}`)
+		default:
+			io.WriteString(w, `{"models":[]}`)
+		}
+	}))
+	defer srv.Close()
+
+	o := &panel.Ollama{URL: srv.URL}
+	if err := o.Init(); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	o.Update(context.Background())
+
+	out := render(t, "widget-ollama", o)
+	if !strings.Contains(out, "kein Modell geladen") {
+		t.Fatalf("resting state missing:\n%s", out)
+	}
+	if strings.Contains(out, "auf der Platte") {
+		t.Fatalf("divider needs a loaded block above it:\n%s", out)
 	}
 }

@@ -381,6 +381,8 @@ html[data-theme="light"] .t-light { display: inline; }
 .o-action_required { background: var(--amber); }
 .o-running { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
 .o-queued { background: var(--muted); }
+/* A model sitting on disk is not a failure — hollow, not coloured. */
+.o-idle { background: transparent; box-shadow: inset 0 0 0 1.5px var(--skip); }
 .o-cancelled,
 .o-skipped,
 .o-neutral,
@@ -546,6 +548,151 @@ html[data-theme="light"] .t-light { display: inline; }
 .bm:hover { background: var(--surface-2); }
 .bm-n { font-weight: 500; }
 .bm-d { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+/* semaphore: failures on top, each with its log excerpt, then the plain list.
+   The list keeps its edge-to-edge bleed, but not the -12px that would slide it
+   under whatever stands above it. */
+
+.sema-sum {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.sema-n {
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+.sema-n.bad { color: var(--red); background: var(--red-bg); }
+.sema-n.ok { color: var(--green); background: var(--green-bg); }
+/* Neither good nor bad: no model loaded is the normal resting state. */
+.sema-n.idle { color: var(--fg3); background: var(--lift); }
+.sema-c { font-family: var(--mono); font-size: 11px; }
+.sema-lnk { margin-left: auto; color: var(--fg3); text-decoration: none; }
+.sema-lnk:hover { color: var(--accent); }
+
+.sema-f {
+  border: 1px solid var(--red-line);
+  background: var(--red-bg);
+  border-radius: var(--r);
+  margin-bottom: 8px;
+}
+.sema-f .row:hover { background: transparent; }
+
+/* The loaded model, lifted out of the list the way a failing job is — the one
+   row you came to look at. Green rather than red: this is the good state. */
+.olm-a {
+  border: 1px solid transparent;
+  background: var(--green-bg);
+  border-radius: var(--r);
+  margin-bottom: 8px;
+}
+.olm-a .row:hover { background: transparent; }
+/* The tag carries the size ("20b"), so it reads as data, not as part of the name. */
+.olm-t {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg3);
+}
+/* The technical line: parameters, quantisation, context, unload time. Stacked
+   under the name rather than in a right-hand column, because this widget sits in
+   the narrow column and a meta column there wraps into nonsense. */
+.olm-d {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--fg3);
+}
+.sema-log {
+  margin: 0;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--red-line);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  /* Wrapped, not scrolled: the interesting part of an Ansible failure is often
+     the end of a very long path, and a horizontal scrollbar hides it. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* An Ansible "fatal:" line is a single JSON blob with an embedded traceback, so
+   the excerpt can be taller than the rest of the page. Cap it — the full log is
+   one click away now. */
+.sema-f .sema-log {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* A labelled rule between groups of rows — shared by the monitor and the
+   semaphore widget. */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 2px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--faint);
+}
+.divider:first-child { margin-top: 0; }
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.widget .sema-sum ~ .list,
+.widget .divider + .list { margin-top: 0; }
+
+/* Expandable runs. The row is the <summary>, so the whole line is the hit area
+   and the log arrives on first open — 20 logs per refresh would be 20 requests
+   nobody asked for. */
+
+.sema-x > summary { cursor: pointer; list-style: none; }
+.sema-x > summary::-webkit-details-marker { display: none; }
+.sema-x > summary.row::after {
+  content: "›";
+  color: var(--faint);
+  font-size: 13px;
+  line-height: 1;
+}
+.sema-x[open] > summary.row::after { content: "⌄"; }
+.sema-x[open] > summary.row { background: var(--lift); }
+
+.sema-more {
+  padding: 6px 12px 8px;
+  font-size: 11px;
+  color: var(--fg3);
+  border-top: 1px solid var(--red-line);
+}
+.sema-more:hover { color: var(--accent); }
+.sema-x[open] .sema-more { color: var(--accent); }
+
+.sema-lh {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 12px 0;
+  font-size: 11px;
+  color: var(--faint);
+}
+.sema-lh .sema-lnk { margin-left: auto; }
+.sema-wait { padding: 8px 12px 10px; font-size: 11px; color: var(--faint); }
+
+/* An expanded log gets a scroll box of its own: a 500-line Ansible run must not
+   push the rest of the dashboard off the screen. */
+.sema-full .sema-log {
+  max-height: 340px;
+  overflow-y: auto;
+  border-top: 0;
+}
 
 /* ---- messages ---------------------------------------------------------- */
 

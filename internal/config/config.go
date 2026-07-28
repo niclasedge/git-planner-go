@@ -21,6 +21,12 @@ type Config struct {
 
 type Server struct {
 	Bind string `yaml:"bind"`
+	// Tailnet adds a second listener on this machine's Tailscale address, on the
+	// same port as Bind, so other devices in the tailnet can reach the app while
+	// nothing is exposed to the local network. The address is discovered at
+	// startup rather than configured: it is stable per node, but writing it here
+	// would break the moment this file is copied to another machine.
+	Tailnet bool `yaml:"tailnet"`
 	// DBPath is the SQLite cache. Not a secret, so it belongs here rather than
 	// in .env.
 	DBPath string `yaml:"db-path"`
@@ -157,6 +163,13 @@ func Load(path string) (*Config, []string, error) {
 }
 
 func (c *Config) applyDefaults() {
+	// A container has to bind 0.0.0.0 — Docker publishes through the container's
+	// own interface, not its loopback — while the same file started natively
+	// must not. One variable settles it without a second copy of the config;
+	// which host actually reaches the port is then the publisher's decision.
+	if bind := strings.TrimSpace(os.Getenv("GITPLANNER_BIND")); bind != "" {
+		c.Server.Bind = bind
+	}
 	if c.Server.Bind == "" {
 		c.Server.Bind = "127.0.0.1:8090"
 	}

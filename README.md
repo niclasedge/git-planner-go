@@ -103,6 +103,90 @@ go build -o git-planner .
 Dann `http://127.0.0.1:8092`. (Nicht 8090 — das ist der Port von `files-tauri`, und
 der Monitor-Widget auf der letzten Seite beobachtet ihn.)
 
+### Im Tailnet erreichbar machen
+
+```yaml
+server:
+  bind: 127.0.0.1:8092
+  tailnet: true
+```
+
+Damit hört der Server zusätzlich auf der Tailscale-Adresse dieses Rechners, auf
+demselben Port. Die Adresse wird beim Start aus den Interfaces gelesen (alles in
+`100.64.0.0/10` bzw. `fd7a:115c:a1e0::/48`) — es gibt nichts zu konfigurieren und
+nichts synchron zu halten. Die Startzeile nennt jede Adresse:
+
+```
+INFO  listening addr=http://127.0.0.1:8092 tokens=2 pages=4
+WARN  also listening on the tailnet — no authentication addr=http://100.x.y.z:8092
+```
+
+Auf dem Handy dann `http://100.x.y.z:8092` oder, mit aktiviertem MagicDNS,
+`http://<rechnername>.<tailnet>.ts.net:8092`.
+
+**Bewusst nicht `bind: 0.0.0.0`.** Die App hat keinen Login, ein Wildcard-Bind
+würde das Issue-Editing jedem Netz anbieten, in das der Rechner sich einbucht —
+Café-WLAN inklusive. So sind es genau zwei Interfaces: Loopback und Tailnet; ein
+Verbindungsversuch aus dem lokalen LAN läuft ins Leere.
+
+Was bleibt: **jedes Gerät im Tailnet darf mit den Tokens aus `.env` Issues
+ändern.** Das ist das ganze Sicherheitsmodell — das Tailnet *ist* die
+Authentifizierung. Schreibende Requests brauchen zusätzlich den `HX-Request`-Header
+und einen Origin, der zum Host passt; das hält Browser davon ab, über
+DNS-Rebinding auf die Tailnet-Adresse zu schreiben, ersetzt aber keinen Login.
+
+Läuft Tailscale beim Start nicht, sagt eine WARN-Zeile das und die App bedient nur
+Loopback — nach dem Start von Tailscale einmal neu starten.
+
+### Als Dienst: Docker Compose
+
+```bash
+# Einmalig: die Tailscale-IPv4 dieses Rechners nach .env. Die App-Store-Variante
+# von Tailscale legt kein `tailscale` in den PATH, daher der volle Pfad.
+printf 'TAILSCALE_IP=%s\n' \
+  "$(/Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4)" >> .env
+
+docker compose up -d --build
+```
+
+Die Adresse steht auch in der WARN-Zeile eines nativen Starts. Endet `.env` ohne
+Zeilenumbruch, klebt das `>>` die neue Zuweisung an die letzte Zeile und zerstört
+den Token davor — vorher prüfen: `tail -c 1 .env | xxd`.
+
+`restart: unless-stopped` heißt: kommt nach einem Crash und nach einem Reboot von
+selbst zurück, sobald der Docker-Daemon läuft. Was es *nicht* überlebt, ist ein
+`docker compose down` — genau das ist der Unterschied zu `always`.
+
+Zwei Dinge sind im Container anders, und beide sind gelöst statt umgangen:
+
+**Der Bind.** Docker veröffentlicht Ports über das Container-Interface, ein
+Loopback-Bind wäre von außen unerreichbar — der Container braucht also
+`0.0.0.0`. Dieselbe Datei nativ gestartet darf das nicht. Deshalb überschreibt
+`GITPLANNER_BIND` (in `docker-compose.yml` gesetzt) den Wert aus `config.yaml`;
+die Datei behält ihr sicheres `127.0.0.1`. Wer die Ports erreicht, entscheidet
+dann das Publishing, nicht die App:
+
+```yaml
+ports:
+  - "127.0.0.1:8092:8092"
+  - "${TAILSCALE_IP}:8092:8092"
+```
+
+Also genau dieselben zwei Interfaces wie beim nativen Start — und bewusst nicht
+`0.0.0.0`. Die WARN-Zeile „server.tailnet ignored" im Container-Log ist korrekt:
+den zweiten Listener macht hier Docker.
+
+**`localhost` ist im Container der Container.** Die lokalen Dienste im
+Monitor-Widget stehen deshalb mit der Tailnet-IP dieses Rechners in
+`config.yaml` — die gilt nativ wie im Container. Einzige Ausnahme sind Dienste,
+die nur auf Loopback lauschen und gar keinen Docker-Publish haben: die erreicht
+`host.docker.internal` (per `extra_hosts` verdrahtet, damit es auch auf Linux
+auflöst).
+
+`config.yaml` und `.env` werden gemountet, nicht ins Image gebacken — das Image
+trägt keinen Token. `./data` (SQLite-Cache) ist ein Volume. Der Healthcheck
+fragt `/healthz`.
+
 ## Token
 
 Tokens stehen **ausschließlich** in `.env`. `config.yaml` verweist über den
@@ -208,9 +292,107 @@ letzten Runs (Höhe = Laufzeit, wurzelskaliert, damit ein 40-Minuten-Ausreißer
 nicht zwanzig 30-Sekunden-Runs zu Strichen plattdrückt) und die Run-Zeilen mit
 Step-Dots. Filterbar nach Repo, Token und Status.
 
-**Seite 4+ — was in `config.yaml` steht.** Widget-Typen: `monitor`, `bookmarks`,
-`iframe`, `html`. Ein neuer Typ ist ein Struct plus ein Template — `Kind()` ist
-gleichzeitig der Template-Name, es gibt kein Switch zum Erweitern.
+**Seite 4+ — was in `config.yaml` steht.** Widget-Typen: `monitor`, `semaphore`,
+`ollama`, `bookmarks`, `iframe`, `html`. Ein neuer Typ ist ein Struct plus ein Template —
+`Kind()` ist gleichzeitig der Template-Name, gesucht wird nichts.
+
+### Widget `semaphore`
+
+Zeigt den jüngsten Lauf jedes Templates eines Ansible-Semaphore-Projekts: oben
+die roten mit den Log-Zeilen, die den Fehler erklären, darunter der Rest.
+
+```yaml
+- type: semaphore
+  title: IaC-Stack · Semaphore
+  url: http://100.109.141.47:3001
+  project: IaC-Stack        # Name, nicht ID; Groß/Kleinschreibung egal
+  user: admin
+  password-env: SEMAPHORE_PASSWORD   # Variablenname, nicht der Wert
+  # token-env: SEMAPHORE_TOKEN       # Alternative: API-Token statt Login
+  limit: 400                # Größe des Task-Fensters
+  cache: 2m
+```
+
+Semaphore führt eine flache Task-Historie, ein Template kann darin also mehrfach
+vorkommen. „Was ist gerade rot“ heißt deshalb: pro Template nur den neuesten Lauf
+behalten. `limit` muss dafür deutlich größer sein als die Zahl der Templates.
+
+Vier Requests pro Aktualisierung (Projekte, Templates, Tasks, plus ein
+Log-Abruf je rotem Lauf, maximal sechs). Die Session-Cookie wird
+wiederverwendet, ein abgelaufener Cookie kostet genau einen neuen Login.
+
+Fehlt das Passwort, verschwindet das Widget nicht — es zeigt einen Banner mit dem
+Namen der Variable, die leer ist.
+
+Jede Zeile ist aufklappbar und holt dann das vollständige Log des Laufs — erst
+beim ersten Öffnen (`hx-trigger="toggle once"`), sonst wären 20 Templates 20
+Requests, die niemand angefordert hat. Angezeigt werden die letzten 500 Zeilen,
+mit Hinweis auf die ausgelassenen und einem Link in die Semaphore-UI. Abrufbar
+sind nur Läufe, die gerade auf der Seite stehen — der Endpunkt ist damit kein
+Leser für die ganze Instanz. ANSI-Farbcodes werden entfernt, statt sie als Markup
+aus Fremdtext neu zu bauen.
+
+### Widget `ollama`
+
+Beantwortet die zwei Fragen, die `ollama list` und `ollama ps` beantworten: was
+liegt auf der Platte, und ist gerade etwas geladen. Das geladene Modell steht
+oben in einem eigenen Block, der Rest darunter nach Pull-Datum.
+
+```yaml
+- type: ollama
+  title: Ollama
+  url: http://host.docker.internal:11434   # nativ: http://127.0.0.1:11434
+  timeout: 10s
+  cache: 5m
+```
+
+Ollama lauscht nur auf Loopback, ein Container erreicht es deshalb über
+`host.docker.internal`. Drei Requests pro Aktualisierung (`/api/tags`,
+`/api/ps`, `/api/version`); scheitert `/api/ps`, bleibt das Inventar trotzdem
+stehen und nur die Ladeinfo fehlt.
+
+**„läuft seit" kommt aus eigener Beobachtung, nicht von Ollama.** Die API nennt
+keinen Ladezeitpunkt — `expires_at` wird von jeder Anfrage nach vorn geschoben.
+Das Widget merkt sich also, wann es ein Modell zuerst geladen gesehen hat; die
+Auflösung ist damit das Refresh-Intervall. War das Modell schon beim ersten
+Abruf geladen, steht dort **„mind. X"**, denn dann kann es beliebig viel länger
+laufen. Entlädt ein Modell, wird der Zeitstempel verworfen — ein Neuladen erbt
+das Alter nicht.
+
+Die Entladezeit steht als **Uhrzeit** da, nicht als Countdown: die Daten sind bis
+zu ein Intervall alt und Ollamas `keep_alive` ist selbst fünf Minuten, ein
+gerechnetes „entlädt in 4m" wäre also etwa so oft falsch wie richtig.
+
+### Widget `monitor`
+
+HTTP-Checks, entweder als flache Liste (`sites:`) oder gruppiert (`groups:`) —
+„läuft hier“ und „läuft auf dem Server“ sind zwei Fragen, die eine gemeinsame
+Liste nicht beantwortet. Beides lässt sich mischen; die flache Liste wird zur
+ersten, titellosen Gruppe.
+
+```yaml
+- type: monitor
+  title: Dienste
+  cache: 60s
+  failures-only: false      # true blendet gesunde Zeilen aus, Gruppen inklusive
+  groups:
+    - title: Lokal · Docker
+      sites:
+        - title: glance
+          url: http://localhost:3000
+          timeout: 3s
+    - title: netcup3 · Docker
+      sites:
+        - title: Semaphore
+          url: http://100.109.141.47:3001
+        - title: Kibana
+          url: http://localhost:5601
+          check-url: http://localhost:5601/api/status   # Link ≠ Health-Endpunkt
+```
+
+Unter `failures-only` verschwindet eine Gruppe komplett, wenn alles grün ist —
+Überschrift eingeschlossen. Die Latenz steht in Millisekunden, und damit wird die
+Gruppierung selbst zur Aussage: lokal ~10–30 ms, netcup3 ~80–140 ms.
 
 ## config.yaml
 

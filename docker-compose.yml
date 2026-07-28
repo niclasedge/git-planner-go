@@ -1,0 +1,39 @@
+services:
+  git-planner:
+    build: .
+    image: git-planner:local
+    container_name: git-planner
+
+    # Autostart: comes back after a crash and after a reboot, as soon as the
+    # Docker daemon is up. The only thing it does not survive is `docker compose
+    # down` — that is what "unless-stopped" means.
+    restart: unless-stopped
+
+    # Inside the container the port has to be on 0.0.0.0: Docker publishes
+    # through the container's own interface, and a loopback bind would be
+    # unreachable from outside it. The config file keeps its safe 127.0.0.1
+    # value for a native start.
+    environment:
+      GITPLANNER_BIND: 0.0.0.0:8092
+
+    # Which hosts actually reach it is decided here, not by the app. Loopback
+    # plus this machine's Tailscale address — the same two listeners the native
+    # binary opens, and deliberately not 0.0.0.0: the app has no login.
+    # TAILSCALE_IP comes from .env — see the README for how to read it off this
+    # machine (the App Store build of Tailscale puts no CLI in the PATH).
+    ports:
+      - "127.0.0.1:8092:8092"
+      - "${TAILSCALE_IP:?set TAILSCALE_IP in .env — see README, section Docker Compose}:8092:8092"
+
+    # The tokens. Read at startup, never written into the image.
+    env_file:
+      - .env
+
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./data:/app/data
+
+    # Reaches services bound to the Mac's loopback, which the tailnet address
+    # cannot — files-tauri is the one entry in config.yaml that needs it.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

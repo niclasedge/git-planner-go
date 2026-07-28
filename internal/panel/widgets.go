@@ -18,11 +18,35 @@ import (
 // ---------------------------------------------------------------------------
 
 type Monitor struct {
-	Base  `yaml:",inline"`
-	Sites []*Site `yaml:"sites"`
+	Base `yaml:",inline"`
+	// Sites is the flat form, for a widget that needs no grouping. Groups is
+	// the grouped one — "runs here" and "runs on the server" are different
+	// questions and a single list answers neither.
+	Sites  []*Site      `yaml:"sites"`
+	Groups []*SiteGroup `yaml:"groups"`
 	// FailuresOnly hides healthy sites, which is what you want once the list
 	// gets long.
 	FailuresOnly bool `yaml:"failures-only"`
+}
+
+type SiteGroup struct {
+	Title string  `yaml:"title"`
+	Sites []*Site `yaml:"sites"`
+}
+
+// Visible is the rows to render. A group whose sites are all up disappears
+// entirely under failures-only, heading included.
+func (g *SiteGroup) Visible(failuresOnly bool) []*Site {
+	if !failuresOnly {
+		return g.Sites
+	}
+	var out []*Site
+	for _, s := range g.Sites {
+		if !s.Up() {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 type Site struct {
@@ -71,6 +95,16 @@ func (s *Site) Outcome() string {
 func (m *Monitor) Kind() string { return "monitor" }
 
 func (m *Monitor) Init() error {
+	// The flat form is the grouped one with a single untitled group, so
+	// everything below only has to deal with groups.
+	if len(m.Sites) > 0 {
+		m.Groups = append([]*SiteGroup{{Sites: m.Sites}}, m.Groups...)
+	}
+	m.Sites = nil
+	for _, g := range m.Groups {
+		m.Sites = append(m.Sites, g.Sites...)
+	}
+
 	if len(m.Sites) == 0 {
 		return fmt.Errorf("monitor needs at least one site")
 	}

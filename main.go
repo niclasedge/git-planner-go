@@ -13,6 +13,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -103,21 +104,38 @@ func run() error {
 	go panels.Start(ctx)
 
 	httpSrv := &http.Server{
-		Addr:              cfg.Server.Bind,
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
+	// One http.Server, several listeners: Serve may be called once per listener
+	// and Shutdown closes all of them.
+	addrs := listenAddrs(cfg.Server.Bind, cfg.Server.Tailnet, log)
+	lns, err := listenAll(addrs)
+	if err != nil {
+		return err
+	}
+
+	log.Info("listening",
+		"addr", "http://"+addrs[0],
+		"tokens", len(cfg.Tokens),
+		"pages", len(cfg.Pages))
+	for _, a := range addrs[1:] {
+		// Worth saying out loud: reaching this address needs no login, so every
+		// device in the tailnet can edit issues with the tokens from .env.
+		log.Warn("also listening on the tailnet — no authentication",
+			"addr", "http://"+a,
+			"effect", "any device in the tailnet can read and edit these issues")
+	}
+
 	errc := make(chan error, 1)
-	go func() {
-		log.Info("listening",
-			"addr", "http://"+cfg.Server.Bind,
-			"tokens", len(cfg.Tokens),
-			"pages", len(cfg.Pages))
-		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errc <- err
-		}
-	}()
+	for _, ln := range lns {
+		go func(ln net.Listener) {
+			if err := httpSrv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errc <- err
+			}
+		}(ln)
+	}
 
 	select {
 	case err := <-errc:

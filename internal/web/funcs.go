@@ -14,6 +14,7 @@ var funcs = template.FuncMap{
 	"static":     staticURL,
 	"relTime":    relTime,
 	"dur":        humanDuration,
+	"size":       humanSize,
 	"barHeight":  barHeight,
 	"labelStyle": labelStyle,
 	"initials":   initials,
@@ -50,12 +51,36 @@ func relTime(t time.Time) string {
 	}
 }
 
+// humanSize formats a byte count the way a model list reads: "13,3 GB". Decimal
+// units, matching what `ollama list` prints — not the binary ones, or the same
+// model would appear to have two sizes.
+func humanSize(b int64) string {
+	if b <= 0 {
+		return "—"
+	}
+	const k = 1000.0
+	switch {
+	case b < 1_000_000:
+		return fmt.Sprintf("%.0f kB", float64(b)/k)
+	case b < 1_000_000_000:
+		return fmt.Sprintf("%.0f MB", float64(b)/(k*k))
+	default:
+		// Comma as the decimal separator: the UI is German.
+		s := fmt.Sprintf("%.1f", float64(b)/(k*k*k))
+		return strings.Replace(s, ".", ",", 1) + " GB"
+	}
+}
+
 // humanDuration formats a run length compactly: "42s", "3m 12s", "1h 4m".
 func humanDuration(d time.Duration) string {
 	if d <= 0 {
 		return "—"
 	}
 	switch {
+	// Below a second, seconds round to "0s" and say nothing — which is exactly
+	// the range every local uptime probe lands in.
+	case d < time.Second:
+		return fmt.Sprintf("%dms", max(1, d.Milliseconds()))
 	case d < time.Minute:
 		return fmt.Sprintf("%ds", int(d.Seconds()))
 	case d < time.Hour:

@@ -173,6 +173,10 @@ func buildWidget(node yaml.Node, id int) (Widget, error) {
 		w = &Monitor{}
 	case "bookmarks":
 		w = &Bookmarks{}
+	case "semaphore":
+		w = &Semaphore{}
+	case "ollama":
+		w = &Ollama{}
 	case "iframe":
 		w = &IFrame{}
 	case "html":

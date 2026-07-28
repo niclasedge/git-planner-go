@@ -8,6 +8,17 @@ server:
   # Deliberately not 8090: that is files-tauri's port, and the monitor widget
   # below watches it. Binding the same port would collide on startup.
   bind: 127.0.0.1:8092
+
+  # Also listen on this machine's Tailscale address, same port, so phone and
+  # iPad can reach the planner. The address is discovered at startup — nothing
+  # to configure, nothing to keep in sync.
+  #
+  # Not the same as bind: 0.0.0.0 — the app has no login, so a wildcard bind
+  # would offer issue editing to every network this machine joins. This way only
+  # loopback and the tailnet are served. Everyone in the tailnet can edit
+  # issues with the tokens from .env; that is the whole security model.
+  tailnet: true
+
   db-path: ./data/git-planner.db
 
 # GitHub identities. Each token gets its own rate-limit budget, its own cache
@@ -79,16 +90,71 @@ pages:
     columns:
       - size: small
         widgets:
+          # Getrennt nach „läuft hier“ und „läuft auf netcup3“ — zwei Fragen,
+          # die eine gemeinsame Liste nicht beantwortet. Remote geht über die
+          # Tailnet-IP, nicht über die öffentlichen Hostnamen.
+          #
+          # Auch die lokalen Dienste stehen mit der Tailnet-IP dieses Macs da,
+          # nicht als localhost: im Container wäre localhost der Container.
+          # So gilt dieselbe Datei nativ wie in Compose.
           - type: monitor
             title: Dienste
             cache: 60s
-            sites:
-              - title: files-tauri
-                url: http://localhost:8090
-                timeout: 3s
-              - title: GitHub API
-                url: https://api.github.com
-                check-url: https://api.github.com/zen
+            groups:
+              - title: Lokal · Docker
+                sites:
+                  # Kein Docker-Publish, lauscht nur auf Loopback — deshalb als
+                  # einziger Eintrag über host.docker.internal (löst nur im
+                  # Container auf; nativ bleibt die Zeile rot).
+                  - title: files-tauri
+                    url: http://host.docker.internal:8090
+                    timeout: 3s
+                  - title: glance
+                    url: http://100.123.180.46:3000
+                    timeout: 3s
+                  - title: SearXNG
+                    url: http://100.123.180.46:8082
+                    timeout: 3s
+                  - title: Kibana
+                    url: http://100.123.180.46:5601
+                    check-url: http://100.123.180.46:5601/api/status
+                  - title: Elasticsearch
+                    url: http://100.123.180.46:9200
+                    timeout: 3s
+                  - title: grinde-viewer
+                    url: http://100.123.180.46:8091
+                    timeout: 3s
+
+              - title: netcup3 · Docker
+                sites:
+                  - title: Semaphore
+                    url: http://100.109.141.47:3001
+                  - title: Kanban
+                    url: http://100.109.141.47:3000
+                  - title: ntfy
+                    url: http://100.109.141.47:8080
+                  - title: SearXNG
+                    url: http://100.109.141.47:8082
+                  - title: glance
+                    url: http://100.109.141.47:8888
+                  - title: Global Dashboard
+                    url: http://100.109.141.47:8503
+
+              - title: Extern
+                sites:
+                  - title: GitHub API
+                    url: https://api.github.com
+                    check-url: https://api.github.com/zen
+
+          # Ollama läuft nativ auf diesem Mac und lauscht nur auf Loopback —
+          # aus dem Container also nur über host.docker.internal erreichbar.
+          # Die Laufzeit („läuft seit") kommt aus eigener Beobachtung, nicht von
+          # Ollama: expires_at wird von jeder Anfrage nach vorn geschoben, einen
+          # Ladezeitpunkt gibt die API nicht her. Auflösung = dieses Intervall.
+          - type: ollama
+            title: Ollama
+            url: http://host.docker.internal:11434
+            cache: 5m
 
           - type: bookmarks
             title: Schnellzugriff
@@ -105,6 +171,17 @@ pages:
 
       - size: full
         widgets:
+          # Ansible Semaphore auf netcup3 (Tailnet-IP, kein Geheimnis). Das
+          # Passwort steht ausschließlich in .env — hier nur der Variablenname.
+          # Holen mit `just semaphore-password` im IaC-Stack-Repo.
+          - type: semaphore
+            title: IaC-Stack · Semaphore
+            url: http://100.109.141.47:3001
+            project: IaC-Stack
+            user: admin
+            password-env: SEMAPHORE_PASSWORD
+            cache: 2m
+
           - type: html
             title: Notiz
             source: |

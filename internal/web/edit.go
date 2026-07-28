@@ -112,10 +112,14 @@ func (s *Server) storedIssue(repo string, number int) (gh.Issue, bool) {
 
 // guardWrite rejects anything that did not come from this app's own UI.
 //
-// The server binds to localhost and has no login, so any page in any other tab
-// could post here — and these handlers write to real repositories. The custom
-// header is the actual guard: a cross-origin request cannot set it without a
-// preflight, and the preflight has nowhere to succeed.
+// The server has no login, so any page in any other tab could post here — and
+// these handlers write to real repositories. The custom header is the actual
+// guard: a cross-origin request cannot set it without a preflight, and the
+// preflight has nowhere to succeed. That also covers DNS rebinding, which is the
+// way a browser can be talked into reaching a tailnet address.
+//
+// What it does not cover is a device that is legitimately in the tailnet: there
+// the UI itself is the authorisation.
 func (s *Server) guardWrite(w http.ResponseWriter, r *http.Request) bool {
 	if r.Header.Get("HX-Request") != "true" {
 		http.Error(w, "nur über die UI", http.StatusForbidden)

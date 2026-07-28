@@ -11,6 +11,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/niclasedge/git-planner-go/internal/config"
@@ -114,6 +115,7 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /htmx/actions", s.handleActionsFragment)
 	m.HandleFunc("GET /htmx/planner/detail", s.handlePlannerDetail)
 	m.HandleFunc("GET /htmx/widget/{id}", s.handleWidgetFragment)
+	m.HandleFunc("GET /htmx/widget/{id}/log/{task}", s.handleSemaphoreLog)
 
 	// The edit path. GET renders a form, POST writes to GitHub — the only requests
 	// in the app that leave the read cache behind and cost rate limit.
@@ -224,21 +226,52 @@ func (s *Server) renderWidgetPage(w http.ResponseWriter, slug string) {
 }
 
 func (s *Server) handleWidgetFragment(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
+	wd := s.widgetByID(r.PathValue("id"))
+	if wd == nil {
+		http.NotFound(w, r)
+		return
+	}
+	// Refresh on demand: the user asked for this one specifically.
+	wd.Update(r.Context())
+	s.fragment(w, "widget-frame", wd)
+}
+
+func (s *Server) widgetByID(id string) panel.Widget {
 	for _, p := range s.panels.Pages {
 		for _, col := range p.Columns {
 			for _, wd := range col.Widgets {
-				if fmt.Sprint(wd.ID()) != id {
-					continue
+				if fmt.Sprint(wd.ID()) == id {
+					return wd
 				}
-				// Refresh on demand: the user asked for this one specifically.
-				wd.Update(r.Context())
-				s.fragment(w, "widget-frame", wd)
-				return
 			}
 		}
 	}
-	http.NotFound(w, r)
+	return nil
+}
+
+// handleSemaphoreLog serves the full output of one run, lazily: the rows expand
+// on click and 20 logs per refresh would be 20 requests nobody asked for.
+func (s *Server) handleSemaphoreLog(w http.ResponseWriter, r *http.Request) {
+	sw, ok := s.widgetByID(r.PathValue("id")).(*panel.Semaphore)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	taskID, err := strconv.Atoi(r.PathValue("task"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
+	defer cancel()
+
+	v := sw.Log(ctx, taskID)
+	if v == nil {
+		http.NotFound(w, r)
+		return
+	}
+	s.fragment(w, "semaphore-log", v)
 }
 
 func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
