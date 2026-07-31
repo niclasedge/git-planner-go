@@ -110,3 +110,46 @@ Kurze, dauerhaft nützliche Erkenntnisse zu diesem Repo.
   kennzeichnen.
 - `details.parameter_size` fehlt bei MLX-Modellen (`format: safetensors`) und ist
   bei kleinen Modellen ein Absolutwert (`999.89M`, `137M`), nicht immer „7B".
+
+## Service-Screenshots
+
+- Die App nimmt **keine** Screenshots auf: Chromium in ein 24-MB-Image zu holen
+  hieße Debian-Base + Playwright, also ~1 GB. Stattdessen zwei Endpunkte
+  (`/api/shots` als Arbeitsliste, `/shots/<slug>.png` zum Ausliefern) und
+  `scripts/service-shots.sh` als externer Erzeuger.
+- Getriggert wird täglich 6:30 über den Semaphore-Job **Planner Service Shots**
+  auf `hosts: macbook` — Semaphore hat den Mac im Inventory, deshalb braucht es
+  weder launchd noch einen Chromium-Sidecar.
+- **Semaphore führt den Git-Stand aus, nicht den Working Tree** (`file:///repo`
+  wird pro Task frisch geklont). Ein neues Playbook scheitert vor dem Push mit
+  „the playbook … could not be found“ — nicht mit einem Umgebungsfehler.
+- `shot-scraper multi` startet den Browser einmal für alle URLs; 11 Dienste in
+  ~35 s statt 11 Chromium-Starts. Die Option heißt **nicht**
+  `--silent-http-errors` (die gibt es nicht) — ohne `--fail`/`--skip` werden
+  HTTP-Fehler ohnehin ignoriert und trotzdem fotografiert.
+- `mktemp -t name` ist macOS-Syntax; GNU mktemp verlangt `XXXXXX`. Im Script
+  steht deshalb ein vollständiges Template.
+- glance braucht **mehr als 2,5 s** Settling, sonst ist das Bild leer (14 KB
+  statt 230 KB). Default im Script: 4000 ms.
+- Slugs enthalten den Gruppennamen. Ohne ihn kollidieren „SearXNG“ (lokal) und
+  „SearXNG“ (netcup3) auf einer Datei, und die Dedup wirft die zweite weg — im
+  Widget sieht man dann zweimal dasselbe Bild.
+
+## Öffentliche Erreichbarkeit der netcup3-Dienste
+
+- Quelle der Wahrheit ist `services.yml` im IaC-Stack: `defaults.domain_suffix:
+  niclasedge.com`, und ein Dienst **ohne** `domain:` hat bewusst keine
+  Traefik-Route (dort „contract rule 4“ genannt).
+- Zuordnung, am 2026-07-28 von diesem Mac aus geprüft (alle A-Records zeigen auf
+  die öffentliche netcup-IP `202.61.247.130`, **nicht** auf die Tailnet-IP — der
+  Test geht also wirklich übers Internet):
+  - `ntfy.niclasedge.com` → **200**, offen
+  - `kanban.niclasedge.com` (obsidian-kanban) → **303**
+  - `glances.niclasedge.com` (glance) → **401**, Basic Auth
+  - `kanban2.niclasedge.com` (global-dashboard, trotz des Namens) → **401**
+  - Semaphore und searxng-vps haben kein `domain:` → nur über das Tailnet
+- 401/403 ist im Widget ein **eigener** Zustand („öffentlich · Auth"), nicht
+  „öffentlich": beide heißen, der Port ist von außen offen, nur einer heißt,
+  jeder kommt hinein.
+- Der Public-Check läuft in einem eigenen Takt (`public-interval`, Default 15m),
+  nicht im Minutentakt des internen Probes — er verlässt die Maschine.

@@ -30,6 +30,10 @@ type Server struct {
 	// DBPath is the SQLite cache. Not a secret, so it belongs here rather than
 	// in .env.
 	DBPath string `yaml:"db-path"`
+	// ShotsDir is where an external screenshot job leaves one PNG per monitored
+	// service. The app only reads it — taking the pictures needs a browser, which
+	// is not something a 24 MB image should carry.
+	ShotsDir string `yaml:"shots-dir"`
 }
 
 // Token is one GitHub identity. Each gets its own rate-limit budget and its own
@@ -175,6 +179,9 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Server.DBPath == "" {
 		c.Server.DBPath = "./data/git-planner.db"
+	}
+	if c.Server.ShotsDir == "" {
+		c.Server.ShotsDir = "./data/shots"
 	}
 	if c.GitHub.Refresh.Notifications == 0 {
 		c.GitHub.Refresh.Notifications = Duration(60 * time.Second)

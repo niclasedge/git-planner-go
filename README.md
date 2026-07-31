@@ -394,6 +394,83 @@ Unter `failures-only` verschwindet eine Gruppe komplett, wenn alles grün ist �
 Überschrift eingeschlossen. Die Latenz steht in Millisekunden, und damit wird die
 Gruppierung selbst zur Aussage: lokal ~10–30 ms, netcup3 ~80–140 ms.
 
+#### Öffentlich erreichbar oder nur im Tailnet?
+
+Bei einem Host, der manches über Traefik ins Internet hängt und manches nur ins
+Tailnet, sagt der interne Check nichts über die Erreichbarkeit von außen. Dafür
+gibt es `public-url` — dieselbe Anwendung, wie die Welt sie sieht:
+
+```yaml
+- title: ntfy
+  url: http://100.109.141.47:8080          # intern, über das Tailnet
+  public-url: https://ntfy.niclasedge.com  # die Traefik-Route
+```
+
+Daraus wird ein Badge neben dem Namen, in vier Zuständen:
+
+| Badge | Bedeutung |
+|---|---|
+| `intern` | keine `public-url` konfiguriert — nur über das Tailnet |
+| `öffentlich` | antwortet öffentlich, **ohne** Authentifizierung (2xx/3xx) |
+| `öffentlich · Auth` | antwortet öffentlich, verlangt aber Zugangsdaten (401/403) |
+| `Route defekt` | `public-url` konfiguriert, antwortet aber nicht |
+
+`öffentlich · Auth` ist bewusst ein eigener Zustand und nicht in `öffentlich`
+eingerechnet: beide heißen, dass der Port von außen offen ist, aber nur einer
+heißt, dass jeder hineinkommt. Deshalb ist auch nur `öffentlich` farblich
+hervorgehoben — ob das richtig ist, kann das Widget nicht wissen, aber es soll
+niemanden überraschen.
+
+Geprüft wird die öffentliche Adresse in einem eigenen, langsamen Takt
+(`public-interval`, Default 15m): eine Traefik-Route ändert sich, wenn jemand sie
+ändert, und diese Requests verlassen die Maschine. Ein Durchlauf, der den Check
+überspringt, lässt den letzten Befund stehen.
+
+Eine Gruppe fremder Dienste bekommt `external: true` und damit **kein** Badge —
+„ist das öffentlich erreichbar“ ist eine Frage über eigene Hosts; `api.github.com`
+als „intern“ zu bezeichnen wäre eine Aussage über eine Installation, die nicht
+uns gehört.
+
+Welche Domain zu welchem Dienst gehört, steht im IaC-Stack in `services.yml`
+(`domain_suffix: niclasedge.com`); wer dort kein `domain:` hat, ist bewusst
+intern.
+
+#### Screenshots je Dienst
+
+Jede Zeile kann ein Vorschaubild tragen, das beim Überfahren größer wird. Die App
+**macht die Bilder nicht selbst** — dafür bräuchte sie einen Browser, und ein
+24-MB-Image hat in Chromium nichts zu suchen. Sie liefert nur zwei Endpunkte:
+
+```
+GET /api/shots            [{"slug":"lokal-docker-glance","url":"http://…"}, …]
+GET /shots/<slug>.png     das Bild
+```
+
+`/api/shots` listet **nur erreichbare** Dienste — ein Bild der Fehlerseite an die
+Stelle eines funktionierenden zu schreiben verliert genau das, wofür das
+Vorschaubild da ist. Der Slug enthält den Gruppennamen, weil derselbe Dienstname
+in mehreren Gruppen vorkommt: „SearXNG“ läuft hier *und* auf dem Server.
+
+Bilder erzeugt `scripts/service-shots.sh` mit
+[shot-scraper](https://github.com/simonw/shot-scraper) — ein Browserstart für
+alle Dienste via `shot-scraper multi`:
+
+```bash
+scripts/service-shots.sh                       # nach data/shots/
+scripts/service-shots.sh --planner http://…    # anderer Planner
+```
+
+Das Script muss dort laufen, wo die Dienste erreichbar sind — für den lokalen
+Docker-Stack also auf dem Mac, nicht im Container. Im IaC-Stack erledigt das
+täglich um 6:30 der Semaphore-Job **Planner Service Shots**
+(`ansible/playbooks/jobs/local/planner_service_shots.yml`, `hosts: macbook`).
+
+`server.shots-dir` sagt der App, wo sie nachsehen soll (Default `./data/shots`,
+im Container das gemountete Volume). Gelesen wird beim Refresh des Widgets, nicht
+beim Rendern: ein `stat` pro Dienst pro Seitenaufruf hat im Request-Pfad nichts
+verloren. Die Bild-URL trägt die `mtime` als `?v=`, damit ein neues Bild den
+Browser-Cache sicher durchbricht — und darf deshalb eine Woche gecacht werden.
+
 ## config.yaml
 
 ```yaml

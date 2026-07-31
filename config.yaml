@@ -125,22 +125,35 @@ pages:
                     url: http://100.123.180.46:8091
                     timeout: 3s
 
+              # public-url ist die Traefik-Route desselben Dienstes. Damit sagt
+              # die Zeile nicht nur „läuft“, sondern auch „ist von außen
+              # erreichbar“ — bei einer Kiste, die manches nur ins Tailnet
+              # hängt, zwei verschiedene Aussagen. Die Domains stehen im
+              # IaC-Stack in services.yml (domain_suffix: niclasedge.com); wer
+              # dort kein domain: hat, ist bewusst intern.
               - title: netcup3 · Docker
                 sites:
                   - title: Semaphore
                     url: http://100.109.141.47:3001
                   - title: Kanban
                     url: http://100.109.141.47:3000
+                    public-url: https://kanban.niclasedge.com
                   - title: ntfy
                     url: http://100.109.141.47:8080
+                    public-url: https://ntfy.niclasedge.com
                   - title: SearXNG
                     url: http://100.109.141.47:8082
                   - title: glance
                     url: http://100.109.141.47:8888
+                    public-url: https://glances.niclasedge.com
                   - title: Global Dashboard
                     url: http://100.109.141.47:8503
+                    public-url: https://kanban2.niclasedge.com
 
+              # Fremde Dienste: „ist das öffentlich erreichbar“ ist eine Frage
+              # über eigene Hosts, deshalb hier kein Exposure-Badge.
               - title: Extern
+                external: true
                 sites:
                   - title: GitHub API
                     url: https://api.github.com

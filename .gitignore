@@ -1,7 +1,10 @@
-# Secrets — never commit
+# Secrets — never commit. The .env.j2 template is the exception: IaC-Stack's
+# env-file.yml treats a missing template as success and the service would
+# start with every ${VAR} interpolated empty (same rule as rss-reader).
 .env
 .env.*
 !.env.example
+!.env.j2
 
 # Local cache / state
 *.db

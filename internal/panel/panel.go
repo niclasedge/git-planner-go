@@ -116,6 +116,52 @@ type Set struct {
 	bySlug map[string]*Page
 }
 
+// ConfigureShots tells every monitor widget where the screenshot job drops its
+// files. Injected rather than configured per widget: one directory, one place to
+// change it.
+func (s *Set) ConfigureShots(dir string) {
+	for _, m := range s.Monitors() {
+		m.shotsDir = dir
+	}
+}
+
+// Monitors is every monitor widget on every page. The screenshot endpoint needs
+// them all: which services exist is a property of the config, not of one page.
+func (s *Set) Monitors() []*Monitor {
+	if s == nil {
+		return nil
+	}
+	var out []*Monitor
+	for _, p := range s.Pages {
+		for _, c := range p.Columns {
+			for _, w := range c.Widgets {
+				if m, ok := w.(*Monitor); ok {
+					out = append(out, m)
+				}
+			}
+		}
+	}
+	return out
+}
+
+// ShotTargets is every reachable site across all monitors, deduplicated by slug
+// — two widgets naming the same service must not mean two screenshot jobs
+// fighting over one file.
+func (s *Set) ShotTargets() []ShotTarget {
+	seen := map[string]bool{}
+	var out []ShotTarget
+	for _, m := range s.Monitors() {
+		for _, t := range m.ShotTargets() {
+			if seen[t.Slug] {
+				continue
+			}
+			seen[t.Slug] = true
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
 func (s *Set) Page(slug string) *Page {
 	if s == nil {
 		return nil

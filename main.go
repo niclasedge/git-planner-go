@@ -89,6 +89,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	// Where an external job leaves its service screenshots. Read-only for us.
+	panels.ConfigureShots(cfg.Server.ShotsDir)
 
 	h := hub.New(cfg, api, log)
 

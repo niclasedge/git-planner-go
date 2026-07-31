@@ -126,6 +126,11 @@ func (s *Server) routes() {
 
 	m.HandleFunc("POST /refresh/{what}", s.handleRefresh)
 	m.HandleFunc("GET /api/status", s.handleStatus)
+
+	// The screenshot job asks what to photograph and drops the files where
+	// handleShot reads them. The app never runs a browser itself.
+	m.HandleFunc("GET /api/shots", s.handleShotTargets)
+	m.HandleFunc("GET /shots/{name}", s.handleShot)
 	m.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok\n"))

@@ -37,11 +37,20 @@
   {{ range $sites }}
   <div class="row site">
     <span class="dot o-{{ .Outcome }}" title="{{ .Outcome }}"></span>
+    {{ with .Shot }}<span class="site-shot"><img src="{{ . }}" alt="" loading="lazy" decoding="async"></span>{{ end }}
     <div class="row-main">
       {{ if .URL }}
       <a class="row-t" href="{{ .URL }}" target="_blank" rel="noopener">{{ .Title }}</a>
       {{ else }}
       <span class="row-t">{{ .Title }}</span>
+      {{ end }}
+      {{ $x := .Exposure }}
+      {{ if not $x }}{{/* someone else's service — no exposure claim to make */}}
+      {{ else if ne $x "internal" }}
+      <a class="exp e-{{ $x }}" href="{{ .PublicURL }}" target="_blank" rel="noopener"
+         title="{{ .PublicURL }}{{ if .PublicStatus }} — HTTP {{ .PublicStatus }}{{ end }}{{ with .PublicError }} — {{ . }}{{ end }}">{{ .ExposureLabel }}</a>
+      {{ else }}
+      <span class="exp e-internal" title="keine öffentliche Route — nur über das Tailnet">intern</span>
       {{ end }}
       {{ with .Error }}<div class="run-sub err">{{ truncate 80 . }}</div>{{ end }}
     </div>
