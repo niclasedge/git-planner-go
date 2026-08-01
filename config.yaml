@@ -103,11 +103,13 @@ pages:
             groups:
               - title: Lokal · Docker
                 sites:
-                  # Kein Docker-Publish, lauscht nur auf Loopback — deshalb als
-                  # einziger Eintrag über host.docker.internal (löst nur im
-                  # Container auf; nativ bleibt die Zeile rot).
+                  # Kein Docker-Publish, lauscht nur auf Loopback — die
+                  # Tailnet-IP bedient `tailscale serve --tcp=8090` auf dem
+                  # Mac. So prüft dieselbe Zeile nativ wie aus dem
+                  # netcup-Container (wo host.docker.internal nicht auflöst).
+                  # Rot, solange die App nicht läuft.
                   - title: files-tauri
-                    url: http://host.docker.internal:8090
+                    url: http://100.123.180.46:8090
                     timeout: 3s
                   - title: glance
                     url: http://100.123.180.46:3000
@@ -159,14 +161,16 @@ pages:
                     url: https://api.github.com
                     check-url: https://api.github.com/zen
 
-          # Ollama läuft nativ auf diesem Mac und lauscht nur auf Loopback —
-          # aus dem Container also nur über host.docker.internal erreichbar.
+          # Ollama läuft nativ auf dem Mac und lauscht nur auf Loopback — die
+          # Tailnet-IP bedient `tailscale serve --tcp=11434` dort. Damit ist
+          # Ollama aus dem netcup-Container erreichbar (host.docker.internal
+          # löst dort nicht auf) und nativ genauso.
           # Die Laufzeit („läuft seit") kommt aus eigener Beobachtung, nicht von
           # Ollama: expires_at wird von jeder Anfrage nach vorn geschoben, einen
           # Ladezeitpunkt gibt die API nicht her. Auflösung = dieses Intervall.
           - type: ollama
             title: Ollama
-            url: http://host.docker.internal:11434
+            url: http://100.123.180.46:11434
             cache: 5m
 
           - type: bookmarks
