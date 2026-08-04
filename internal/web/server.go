@@ -164,6 +164,10 @@ type pageData struct {
 	Actions    *actionData
 	Planner    *plannerData
 	WidgetPage *panel.Page
+	// Beads is set when the requested widget page is dedicated to a beads
+	// widget: that page renders full-screen like the planner, with the widget's
+	// panes filling the viewport instead of a card in the centred column.
+	Beads *panel.Beads
 }
 
 func (s *Server) render(w http.ResponseWriter, data pageData) {
@@ -221,6 +225,24 @@ func (s *Server) renderWidgetPage(w http.ResponseWriter, slug string) {
 	if p == nil {
 		http.NotFound(w, &http.Request{})
 		return
+	}
+	// A page dedicated to a beads widget gets the planner treatment: the three
+	// panes want the viewport, so the card chrome is skipped and the widget is
+	// rendered directly into the full-height .panes grid. The scheduler keeps
+	// it fresh either way.
+	for _, col := range p.Columns {
+		for _, wd := range col.Widgets {
+			if b, ok := wd.(*panel.Beads); ok {
+				s.render(w, pageData{
+					Title:      p.Title,
+					ActiveSlug: slug,
+					Full:       true,
+					Body:       "page-beads",
+					Beads:      b,
+				})
+				return
+			}
+		}
 	}
 	s.render(w, pageData{
 		Title:      p.Title,

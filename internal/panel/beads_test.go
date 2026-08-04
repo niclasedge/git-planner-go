@@ -20,7 +20,7 @@ const beadsFixture = `{"_type":"issue","id":"x-epic","title":"The map","status":
 `
 
 func TestParseBeads_TreeAndBlocking(t *testing.T) {
-	roots, open, ready, closed, err := parseBeads(strings.NewReader(beadsFixture), "o/r")
+	roots, readyList, open, ready, closed, err := parseBeads(strings.NewReader(beadsFixture), "o/r")
 	if err != nil {
 		t.Fatalf("parseBeads: %v", err)
 	}
@@ -59,10 +59,17 @@ func TestParseBeads_TreeAndBlocking(t *testing.T) {
 	if ready != 2 {
 		t.Fatalf("ready = %d, want 2", ready)
 	}
+	if len(readyList) != 2 || readyList[0].ID != "x-freed" || readyList[1].ID != "x-epic.1" {
+		ids := []string{}
+		for _, b := range readyList {
+			ids = append(ids, b.ID)
+		}
+		t.Fatalf("readyList = %v, want [x-freed x-epic.1] (priority order)", ids)
+	}
 }
 
 func TestParseBeads_GHURLOnlyForGhRefs(t *testing.T) {
-	roots, _, _, _, err := parseBeads(strings.NewReader(beadsFixture), "o/r")
+	roots, _, _, _, _, err := parseBeads(strings.NewReader(beadsFixture), "o/r")
 	if err != nil {
 		t.Fatalf("parseBeads: %v", err)
 	}

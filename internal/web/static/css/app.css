@@ -1096,11 +1096,22 @@ a.seg-i { text-decoration: none; text-align: center; }
 .bd .repo-list { padding: 0 8px 24px; }
 .bd .repo-item.missing .name { color: var(--faint); }
 
+/* The beads page renders the widget straight into the viewport .panes grid:
+   span all five of its columns and fill the height, so the widget's own panes
+   are the page. */
+.panes > .bd { grid-column: 1 / -1; height: 100%; }
+
 .bd-list { display: none; padding: 0 8px 16px; }
 .bd-list.active { display: block; }
 .bd-row { cursor: pointer; border-radius: var(--r); border: 1px solid transparent; }
 .bd-row:hover { background: var(--lift); border-color: var(--border); }
 .bd-row.active { background: var(--accent-bg); border-color: var(--accent-line); }
+
+/* The ready queue sits above the tree: green head, so the "do this now" list
+   reads as one block before the full tree scrolls by. */
+.bd-sec-ready { color: var(--green); padding-top: 8px; }
+.bd-sec-ready .sec-n { color: var(--green); }
+.bd-sec-tree { padding-top: 6px; }
 
 .bd-details > .detail[hidden] { display: none; }
 .bd-detail-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }

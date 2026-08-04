@@ -27,8 +27,9 @@ func TestRenderWidgetBeads(t *testing.T) {
 		Description: "Der Plan.",
 		Children:    []*panel.Bead{child},
 	}
+	ready := &panel.Bead{ID: "x-3", Title: "Do it now", Status: "open", Type: "task", Priority: 1, Repo: "o/r"}
 	out := render(t, "widget-beads", beadsStub{secs: []*panel.BeadsRepo{
-		{Name: "o/r", Roots: []*panel.Bead{epic}, Open: 2, Ready: 0, Closed: 1},
+		{Name: "o/r", Roots: []*panel.Bead{epic, ready}, ReadyList: []*panel.Bead{ready}, Open: 2, Ready: 1, Closed: 1},
 		{Name: "o/empty", Missing: true},
 	}})
 
@@ -45,7 +46,10 @@ func TestRenderWidgetBeads(t *testing.T) {
 		"bd-detail",
 		"o/r · x-1", // detail head names repo and bead
 		"Der Plan.", // description lands in the detail pane
-		"2/0/1",     // repo trio: offen / ready / erledigt
+		"2/1/1",     // repo trio: offen / ready / erledigt
+		"✓ Ready",   // the ready queue sits above the tree
+		"Do it now",
+		"Baum", // and the full tree follows under its own head
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("rendered widget-beads is missing %q", want)

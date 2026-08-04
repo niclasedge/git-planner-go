@@ -57,6 +57,9 @@ type BeadsRepo struct {
 	Open   int // open + in_progress, the number worth glancing at
 	Ready  int // open, unblocked, no open children
 	Closed int
+	// ReadyList is the actionable set — the Ready count as rows, so the page
+	// can show "was kann ich jetzt tun" at the top of the tree.
+	ReadyList []*Bead
 
 	etag string
 }
@@ -206,7 +209,7 @@ func (b *Beads) fetchRepo(ctx context.Context, st *BeadsRepo) {
 	case http.StatusNotFound:
 		b.mu.Lock()
 		st.Missing, st.Err = true, ""
-		st.Roots, st.Open, st.Ready, st.Closed = nil, 0, 0, 0
+		st.Roots, st.ReadyList, st.Open, st.Ready, st.Closed = nil, nil, 0, 0, 0
 		b.mu.Unlock()
 		return
 	case http.StatusOK:
@@ -216,13 +219,13 @@ func (b *Beads) fetchRepo(ctx context.Context, st *BeadsRepo) {
 		return
 	}
 
-	roots, open, ready, closed, err := parseBeads(resp.Body, st.Name)
+	roots, readyList, open, ready, closed, err := parseBeads(resp.Body, st.Name)
 	if err != nil {
 		b.setErr(st, err.Error())
 		return
 	}
 	b.mu.Lock()
-	st.Roots, st.Open, st.Ready, st.Closed = roots, open, ready, closed
+	st.Roots, st.ReadyList, st.Open, st.Ready, st.Closed = roots, readyList, open, ready, closed
 	st.Missing, st.Err = false, ""
 	st.etag = resp.Header.Get("ETag")
 	b.mu.Unlock()
@@ -240,7 +243,7 @@ func (r *BeadsRepo) URL() string { return "https://github.com/" + r.Name }
 // parseBeads turns the JSONL export into render-ready trees. Closed issues are
 // counted but not shown: the page answers "what is there to do", and beads'
 // own compaction will eventually retire them from the export anyway.
-func parseBeads(body io.Reader, repo string) (roots []*Bead, open, ready, closed int, err error) {
+func parseBeads(body io.Reader, repo string) (roots, readyList []*Bead, open, ready, closed int, err error) {
 	byID := map[string]*Bead{}
 	parent := map[string]string{}     // child id → parent id
 	blockers := map[string][]string{} // id → ids it depends on (type blocks)
@@ -258,7 +261,7 @@ func parseBeads(body io.Reader, repo string) (roots []*Bead, open, ready, closed
 		}
 		var rec beadRecord
 		if err := json.Unmarshal([]byte(raw), &rec); err != nil {
-			return nil, 0, 0, 0, fmt.Errorf("issues.jsonl line %d: %w", line, err)
+			return nil, nil, 0, 0, 0, fmt.Errorf("issues.jsonl line %d: %w", line, err)
 		}
 		if rec.RecType != "" && rec.RecType != "issue" {
 			continue // messages, agents and other infrastructure beads
@@ -291,7 +294,7 @@ func parseBeads(body io.Reader, repo string) (roots []*Bead, open, ready, closed
 		order = append(order, rec.ID)
 	}
 	if err := sc.Err(); err != nil {
-		return nil, 0, 0, 0, fmt.Errorf("reading issues.jsonl: %w", err)
+		return nil, nil, 0, 0, 0, fmt.Errorf("reading issues.jsonl: %w", err)
 	}
 
 	for _, id := range order {
@@ -318,9 +321,11 @@ func parseBeads(body io.Reader, repo string) (roots []*Bead, open, ready, closed
 		bd := byID[id]
 		if !bd.Blocked() && bd.Status == "open" && len(bd.Children) == 0 {
 			ready++
+			readyList = append(readyList, bd)
 		}
 	}
-	return roots, open, ready, closed, nil
+	sortBeads(readyList)
+	return roots, readyList, open, ready, closed, nil
 }
 
 // sortBeads orders siblings: epics first (they carry their tasks), then by

@@ -11,6 +11,18 @@
 {{ end }}
 
 
+{{/* Full-screen beads page: the layout puts this body inside the viewport-filling
+     .panes grid, so the widget's own three panes become the page. The card chrome
+     is skipped — a full-height pane needs no header, and the widget-level error
+     (missing token) is a banner here instead. */}}
+{{ define "page-beads" }}
+{{ with .Beads }}
+{{ with .Err }}<div class="banner">{{ . }}</div>{{ end }}
+{{ widget . }}
+{{ end }}
+{{ end }}
+
+
 {{ define "widget-frame" }}
 <section class="card widget" id="w{{ .ID }}">
   <header class="card-h">
@@ -224,6 +236,11 @@
       <div class="empty"><p>keine Beads-DB (.beads/issues.jsonl fehlt)</p></div>
       {{ else }}
       {{ with .Err }}<div class="banner">{{ . }}</div>{{ end }}
+      {{ with .ReadyList }}
+      <div class="sec-head bd-sec-ready">✓ Ready <span class="sec-n" title="offen, unblocked, ohne offene Kinder">{{ len . }}</span></div>
+      {{ range . }}{{ render "bead-row" . }}{{ end }}
+      {{ end }}
+      <div class="sec-head bd-sec-tree">Baum <span class="sec-n">{{ .Open }} offen</span></div>
       {{ range .Roots }}{{ render "bead-row" . }}{{ range .Children }}<div class="bead-child">{{ render "bead-row" . }}</div>{{ end }}{{ end }}
       {{ end }}
     </div>
