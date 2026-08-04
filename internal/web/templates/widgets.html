@@ -241,7 +241,7 @@
       {{ range . }}{{ render "bead-row" . }}{{ end }}
       {{ end }}
       <div class="sec-head bd-sec-tree">Baum <span class="sec-n">{{ .Open }} offen</span></div>
-      {{ range .Roots }}{{ render "bead-row" . }}{{ range .Children }}<div class="bead-child">{{ render "bead-row" . }}</div>{{ end }}{{ end }}
+      {{ range .Roots }}{{ render "bead-row" . }}{{ end }}
       {{ end }}
     </div>
     {{ end }}
@@ -367,6 +367,8 @@
     </div>
   </div>
 </div>
+{{ range .Children }}<div class="bead-child">{{ render "bead-row" . }}</div>{{ end }}
+{{ range .Waiters }}<div class="bead-wait">{{ render "bead-row" . }}</div>{{ end }}
 {{ end }}
 
 

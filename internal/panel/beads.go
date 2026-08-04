@@ -82,6 +82,10 @@ type Bead struct {
 	GHURL     string
 	Children  []*Bead
 	BlockedBy []string // IDs of the open issues blocking this one
+	// Waiters are the beads that wait on this one (their primary blocker is
+	// this bead). The tree renders them nested underneath, with an arrow, so
+	// the order reads "erst dieses, dann jenes".
+	Waiters []*Bead
 }
 
 func (b *Bead) Blocked() bool { return len(b.BlockedBy) > 0 }
@@ -313,12 +317,35 @@ func parseBeads(body io.Reader, repo string) (roots, readyList []*Bead, open, re
 		roots = append(roots, bd)
 	}
 
+	// Nest each blocked bead under its primary blocker and take it out of its
+	// normal tree spot, so every bead shows up once and the dependency reads
+	// as an order: the blocker row sits above, the waiting row indented with a
+	// down-right arrow below it. A blocked bead that still has no visible
+	// blocker stays where it is.
+	for _, id := range order {
+		bd := byID[id]
+		if len(bd.BlockedBy) == 0 {
+			continue
+		}
+		blocker := byID[bd.BlockedBy[0]]
+		if blocker == nil || blocker == bd {
+			continue
+		}
+		blocker.Waiters = append(blocker.Waiters, bd)
+		if p := byID[parent[id]]; p != nil {
+			p.Children = removeBead(p.Children, id)
+		} else {
+			roots = removeBead(roots, id)
+		}
+	}
+
 	sortBeads(roots)
 	for _, r := range roots {
 		sortBeads(r.Children)
 	}
 	for _, id := range order {
 		bd := byID[id]
+		sortBeads(bd.Waiters)
 		if !bd.Blocked() && bd.Status == "open" && len(bd.Children) == 0 {
 			ready++
 			readyList = append(readyList, bd)
@@ -326,6 +353,17 @@ func parseBeads(body io.Reader, repo string) (roots, readyList []*Bead, open, re
 	}
 	sortBeads(readyList)
 	return roots, readyList, open, ready, closed, nil
+}
+
+// removeBead drops the first bead with the given id from the slice. It is what
+// lets a blocked bead move from its parent-child spot to its waiter nest.
+func removeBead(list []*Bead, id string) []*Bead {
+	for i, b := range list {
+		if b.ID == id {
+			return append(list[:i], list[i+1:]...)
+		}
+	}
+	return list
 }
 
 // sortBeads orders siblings: epics first (they carry their tasks), then by

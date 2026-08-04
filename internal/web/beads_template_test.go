@@ -14,10 +14,25 @@ type beadsStub struct{ secs []*panel.BeadsRepo }
 func (s beadsStub) Sections() []*panel.BeadsRepo { return s.secs }
 func (s beadsStub) ID() int                      { return 7 }
 
+// mustReadCSS reads the embedded stylesheet, so tests can assert that a
+// CSS-drawn effect (the waiter arrow) still has its rule.
+func mustReadCSS(t *testing.T) []byte {
+	t.Helper()
+	b, err := staticFS.ReadFile("static/css/app.css")
+	if err != nil {
+		t.Fatalf("reading app.css: %v", err)
+	}
+	return b
+}
+
 func TestRenderWidgetBeads(t *testing.T) {
 	child := &panel.Bead{
 		ID: "x-1.2", Title: "Blocked child", Status: "open", Type: "task",
 		Priority: 3, BlockedBy: []string{"x-1.1"},
+	}
+	waiter := &panel.Bead{
+		ID: "x-1.3", Title: "Comes after the epic", Status: "open", Type: "task",
+		Priority: 1, Repo: "o/r", BlockedBy: []string{"x-1"},
 	}
 	epic := &panel.Bead{
 		ID: "x-1", Title: "The epic", Status: "open", Type: "epic", Priority: 2,
@@ -26,6 +41,7 @@ func TestRenderWidgetBeads(t *testing.T) {
 		Labels:      []string{"wayfinder:map"},
 		Description: "Der Plan.",
 		Children:    []*panel.Bead{child},
+		Waiters:     []*panel.Bead{waiter},
 	}
 	ready := &panel.Bead{ID: "x-3", Title: "Do it now", Status: "open", Type: "task", Priority: 1, Repo: "o/r"}
 	out := render(t, "widget-beads", beadsStub{secs: []*panel.BeadsRepo{
@@ -49,7 +65,8 @@ func TestRenderWidgetBeads(t *testing.T) {
 		"2/1/1",     // repo trio: offen / ready / erledigt
 		"✓ Ready",   // the ready queue sits above the tree
 		"Do it now",
-		"Baum", // and the full tree follows under its own head
+		"Baum",                 // and the full tree follows under its own head
+		"Comes after the epic", // a waiter nests under its blocker
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("rendered widget-beads is missing %q", want)
@@ -59,6 +76,15 @@ func TestRenderWidgetBeads(t *testing.T) {
 	// The child indents under its epic.
 	if !strings.Contains(out, "bead-child") {
 		t.Error("child rows must carry the bead-child indent")
+	}
+	// A blocked bead nests under its blocker, not as a sibling child.
+	if !strings.Contains(out, "bead-wait") {
+		t.Error("waiting rows must carry the bead-wait nest")
+	}
+	// The arrow itself is drawn by CSS, so it lives in app.css, not the markup:
+	// assert the rule here so a rename of the class cannot silently drop it.
+	if !strings.Contains(string(mustReadCSS(t)), ".bead-wait::before") {
+		t.Error("bead-wait needs the ::before arrow in app.css")
 	}
 	// Every bead renders a detail article that the click handler toggles.
 	if !strings.Contains(out, `data-bead="x-1"`) || !strings.Contains(out, `data-bead="x-1.2"`) {

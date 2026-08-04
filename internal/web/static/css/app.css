@@ -1107,6 +1107,24 @@ a.seg-i { text-decoration: none; text-align: center; }
 .bd-row:hover { background: var(--lift); border-color: var(--border); }
 .bd-row.active { background: var(--accent-bg); border-color: var(--accent-line); }
 
+/* A blocked bead nests under its blocker: dashed amber gutter plus a
+   down-right arrow, so the row reads as "erst der Blocker, dann dieses". */
+.bead-wait {
+  margin-left: 18px;
+  padding-left: 12px;
+  border-left: 1px dashed var(--amber);
+  position: relative;
+}
+.bead-wait::before {
+  content: '↳';
+  position: absolute;
+  left: -10px;
+  top: 4px;
+  font-size: 13px;
+  color: var(--amber);
+  line-height: 1;
+}
+
 /* The ready queue sits above the tree: green head, so the "do this now" list
    reads as one block before the full tree scrolls by. */
 .bd-sec-ready { color: var(--green); padding-top: 8px; }

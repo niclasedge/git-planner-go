@@ -38,13 +38,23 @@ func TestParseBeads_TreeAndBlocking(t *testing.T) {
 	}
 
 	epic := roots[0]
-	if len(epic.Children) != 2 || epic.Children[0].ID != "x-epic.1" || epic.Children[1].ID != "x-epic.2" {
+	// x-epic.2 waits on x-epic.1, so it nests under x-epic.1's arrow rather
+	// than standing beside it as a sibling child.
+	if len(epic.Children) != 1 || epic.Children[0].ID != "x-epic.1" {
 		t.Fatalf("epic children = %+v", epic.Children)
+	}
+	if len(epic.Children[0].Waiters) != 1 || epic.Children[0].Waiters[0].ID != "x-epic.2" {
+		t.Fatalf("x-epic.1 waiters = %+v, want [x-epic.2]", epic.Children[0].Waiters)
+	}
+	// The removed waiter must not linger in the tree in its old spot.
+	if len(epic.Children) > 1 {
+		t.Fatalf("x-epic.2 must not stay a sibling child once it nests under x-epic.1")
 	}
 
 	// x-epic.2 waits on the open x-epic.1; x-freed's blocker is closed and
 	// blocks nothing; a related dependency never blocks.
-	if got := epic.Children[1].BlockedBy; len(got) != 1 || got[0] != "x-epic.1" {
+	waiter := epic.Children[0].Waiters[0]
+	if got := waiter.BlockedBy; len(got) != 1 || got[0] != "x-epic.1" {
 		t.Fatalf("x-epic.2 blocked by %v, want [x-epic.1]", got)
 	}
 	if roots[1].Blocked() {
