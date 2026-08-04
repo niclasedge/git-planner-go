@@ -335,12 +335,14 @@ aus Fremdtext neu zu bauen.
 ### Widget `beads`
 
 Zeigt die [beads](https://github.com/gastownhall/beads)-Task-Graphen der
-genannten Repos in einem Dreipane-Layout wie die Planner-Seite: links die
-Repo-Liste mit `offen / ready / erledigt`, in der Mitte der Baum (Epics mit
-eingerückten Kind-Tasks, Blocker als `wartet auf …`, Prioritäten, Tags), rechts
-die Details des angewählten Beads inklusive Beschreibung, Kind-Aufgaben und —
-bei einem per `external_ref: gh-<n>` migrierten Issue — dem Link dorthin. Die
-Panele sind wie beim Planner per Drag verschiebbar und merken sich ihre Breite.
+genannten Repos **full-screen in drei Panes wie die Planner-Seite**: links die
+Repo-Liste mit `offen / ready / erledigt`, in der Mitte oben die Ready-Queue
+(offene, unblocked, kinderlos-Beads — „was kann ich jetzt tun") und darunter
+der Baum (Epics mit eingerückten Kind-Tasks, Blocker als `wartet auf …`,
+Prioritäten, Tags), rechts die Details des angewählten Beads inklusive
+Beschreibung, Kind-Aufgaben und — bei einem per `external_ref: gh-<n>`
+migrierten Issue — dem Link dorthin. Die Panels sind wie beim Planner per Drag
+verschiebbar und merken sich ihre Breite.
 
 ```yaml
 - type: beads
