@@ -351,24 +351,26 @@
 {{ end }}
 
 
+{{/* One line per bead: title left, labels + id/priority right. The blocker
+     list lives in the dot's tooltip — the nesting under the blocker and the
+     amber dot already say "wartet" at a glance. */}}
 {{ define "bead-row" }}
 <div class="row bd-row" data-bead="{{ .ID }}">
-  <span class="dot o-{{ .Dot }}" title="{{ if .Blocked }}blockiert{{ else }}{{ .Status }}{{ end }}"></span>
+  <span class="dot o-{{ .Dot }}" title="{{ if .Blocked }}wartet auf {{ range $i, $b := .BlockedBy }}{{ if $i }}, {{ end }}{{ $b }}{{ end }}{{ else }}{{ .Status }}{{ end }}"></span>
   <div class="row-main">
     <span class="row-t">
       {{ if eq .Type "epic" }}<span class="label" style="{{ labelStyle "8957e5" }}">epic</span> {{ end }}
       {{- .Title }}
       {{ with .GHURL }}<a class="sema-lnk" href="{{ . }}" target="_blank" rel="noopener">↗</a>{{ end }}
     </span>
-    <div class="run-sub">
-      {{ .ID }} · P{{ .Priority }}
-      {{- if .Blocked }} · wartet auf {{ range $i, $b := .BlockedBy }}{{ if $i }}, {{ end }}{{ $b }}{{ end }}{{ end }}
-      {{- range .Labels }} <span class="label" style="{{ labelStyle "6e7681" }}">{{ . }}</span>{{ end }}
-    </div>
+  </div>
+  <div class="row-meta">
+    {{ range .Labels }}<span class="label" style="{{ labelStyle "6e7681" }}">{{ . }}</span>{{ end }}
+    <span class="num">{{ .ID }} · P{{ .Priority }}</span>
   </div>
 </div>
-{{ range .Children }}<div class="bead-child">{{ render "bead-row" . }}</div>{{ end }}
-{{ range .Waiters }}<div class="bead-wait">{{ render "bead-row" . }}</div>{{ end }}
+{{ range .Children }}<div class="bd-nest">{{ render "bead-row" . }}</div>{{ end }}
+{{ range .Waiters }}<div class="bd-nest">{{ render "bead-row" . }}</div>{{ end }}
 {{ end }}
 
 

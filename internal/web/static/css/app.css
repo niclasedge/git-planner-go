@@ -720,10 +720,6 @@ html[data-theme="light"] .t-light { display: inline; }
 .widget .sema-sum ~ .list,
 .widget .divider + .list { margin-top: 0; }
 
-/* Beads: children indent under their epic, guided by a left rule so the
-   hierarchy survives long lists. */
-.bead-child { margin-left: 18px; border-left: 1px solid var(--border); padding-left: 8px; }
-
 /* Expandable runs. The row is the <summary>, so the whole line is the hit area
    and the log arrives on first open — 20 logs per refresh would be 20 requests
    nobody asked for. */
@@ -1107,23 +1103,10 @@ a.seg-i { text-decoration: none; text-align: center; }
 .bd-row:hover { background: var(--lift); border-color: var(--border); }
 .bd-row.active { background: var(--accent-bg); border-color: var(--accent-line); }
 
-/* A blocked bead nests under its blocker: dashed amber gutter plus a
-   down-right arrow, so the row reads as "erst der Blocker, dann dieses". */
-.bead-wait {
-  margin-left: 18px;
-  padding-left: 12px;
-  border-left: 1px dashed var(--amber);
-  position: relative;
-}
-.bead-wait::before {
-  content: '↳';
-  position: absolute;
-  left: -10px;
-  top: 4px;
-  font-size: 13px;
-  color: var(--amber);
-  line-height: 1;
-}
+/* One indent style for every nesting level — children under their epic and
+   waiters under their blocker alike. The amber dot is what says "wartet",
+   not a second gutter style. */
+.bd-nest { margin-left: 20px; border-left: 1px solid var(--border); padding-left: 6px; }
 
 /* The ready queue sits above the tree: green head, so the "do this now" list
    reads as one block before the full tree scrolls by. */

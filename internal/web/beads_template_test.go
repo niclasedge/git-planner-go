@@ -15,7 +15,7 @@ func (s beadsStub) Sections() []*panel.BeadsRepo { return s.secs }
 func (s beadsStub) ID() int                      { return 7 }
 
 // mustReadCSS reads the embedded stylesheet, so tests can assert that a
-// CSS-drawn effect (the waiter arrow) still has its rule.
+// CSS-drawn effect (the nesting indent) still has its rule.
 func mustReadCSS(t *testing.T) []byte {
 	t.Helper()
 	b, err := staticFS.ReadFile("static/css/app.css")
@@ -73,18 +73,13 @@ func TestRenderWidgetBeads(t *testing.T) {
 		}
 	}
 
-	// The child indents under its epic.
-	if !strings.Contains(out, "bead-child") {
-		t.Error("child rows must carry the bead-child indent")
+	// Children and waiters share the one nesting style: both indent with
+	// bd-nest, and the class has its rule in app.css.
+	if strings.Count(out, `class="bd-nest"`) < 2 {
+		t.Error("child and waiter rows must both carry the bd-nest indent")
 	}
-	// A blocked bead nests under its blocker, not as a sibling child.
-	if !strings.Contains(out, "bead-wait") {
-		t.Error("waiting rows must carry the bead-wait nest")
-	}
-	// The arrow itself is drawn by CSS, so it lives in app.css, not the markup:
-	// assert the rule here so a rename of the class cannot silently drop it.
-	if !strings.Contains(string(mustReadCSS(t)), ".bead-wait::before") {
-		t.Error("bead-wait needs the ::before arrow in app.css")
+	if !strings.Contains(string(mustReadCSS(t)), ".bd-nest") {
+		t.Error("bd-nest needs its indent rule in app.css")
 	}
 	// Every bead renders a detail article that the click handler toggles.
 	if !strings.Contains(out, `data-bead="x-1"`) || !strings.Contains(out, `data-bead="x-1.2"`) {

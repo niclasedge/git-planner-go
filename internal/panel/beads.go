@@ -83,8 +83,8 @@ type Bead struct {
 	Children  []*Bead
 	BlockedBy []string // IDs of the open issues blocking this one
 	// Waiters are the beads that wait on this one (their primary blocker is
-	// this bead). The tree renders them nested underneath, with an arrow, so
-	// the order reads "erst dieses, dann jenes".
+	// this bead). The tree renders them nested underneath — same indent as
+	// children — so the order reads "erst dieses, dann jenes".
 	Waiters []*Bead
 }
 
