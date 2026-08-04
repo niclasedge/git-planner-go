@@ -84,6 +84,20 @@ pages:
   - title: Actions
     type: actions
 
+  # The beads task graphs of the repos that track their work in beads
+  # (github.com/gastownhall/beads) instead of GitHub issues. Reads the
+  # committed .beads/issues.jsonl export — list only repos that have one.
+  - title: Beads
+    columns:
+      - size: full
+        widgets:
+          - type: beads
+            title: Beads · Task-Graph
+            token-env: GITHUB_PAT
+            cache: 5m
+            repos:
+              - niclasedge/IaC-Stack
+
   # From here on the config decides. Available widget types: monitor, bookmarks,
   # iframe, html.
   - title: Monitoring

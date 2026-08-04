@@ -223,6 +223,8 @@ func buildWidget(node yaml.Node, id int) (Widget, error) {
 		w = &Semaphore{}
 	case "ollama":
 		w = &Ollama{}
+	case "beads":
+		w = &Beads{}
 	case "iframe":
 		w = &IFrame{}
 	case "html":

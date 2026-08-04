@@ -187,6 +187,49 @@
 {{ end }}
 
 
+{{ define "widget-beads" }}
+{{ range .Sections }}
+<div class="sema-sum">
+  <a class="row-t" href="{{ .URL }}" target="_blank" rel="noopener">{{ .Name }}</a>
+  {{ if .Missing }}
+  <span class="sema-c">keine Beads-DB (.beads/issues.jsonl fehlt)</span>
+  {{ else }}
+  <span class="sema-n {{ if .Open }}ok{{ else }}idle{{ end }}">{{ .Open }} offen</span>
+  <span class="sema-c">{{ .Ready }} ready · {{ .Closed }} erledigt</span>
+  {{ end }}
+</div>
+{{ with .Err }}<div class="banner">{{ . }}</div>{{ end }}
+<div class="list">
+  {{ range .Roots }}
+  {{ render "bead-row" . }}
+  {{ range .Children }}
+  <div class="bead-child">{{ render "bead-row" . }}</div>
+  {{ end }}
+  {{ end }}
+</div>
+{{ end }}
+{{ end }}
+
+
+{{ define "bead-row" }}
+<div class="row">
+  <span class="dot o-{{ .Dot }}" title="{{ if .Blocked }}blockiert{{ else }}{{ .Status }}{{ end }}"></span>
+  <div class="row-main">
+    <span class="row-t">
+      {{ if eq .Type "epic" }}<span class="label" style="{{ labelStyle "8957e5" }}">epic</span> {{ end }}
+      {{- .Title }}
+      {{ with .GHURL }}<a class="sema-lnk" href="{{ . }}" target="_blank" rel="noopener">↗</a>{{ end }}
+    </span>
+    <div class="run-sub">
+      {{ .ID }} · P{{ .Priority }}
+      {{- if .Blocked }} · wartet auf {{ range $i, $b := .BlockedBy }}{{ if $i }}, {{ end }}{{ $b }}{{ end }}{{ end }}
+      {{- range .Labels }} <span class="label" style="{{ labelStyle "6e7681" }}">{{ . }}</span>{{ end }}
+    </div>
+  </div>
+</div>
+{{ end }}
+
+
 {{ define "widget-bookmarks" }}
 {{ range .Groups }}
 <div class="bm-g">

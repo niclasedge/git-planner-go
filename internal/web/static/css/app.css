@@ -720,6 +720,10 @@ html[data-theme="light"] .t-light { display: inline; }
 .widget .sema-sum ~ .list,
 .widget .divider + .list { margin-top: 0; }
 
+/* Beads: children indent under their epic, guided by a left rule so the
+   hierarchy survives long lists. */
+.bead-child { margin-left: 18px; border-left: 1px solid var(--border); padding-left: 8px; }
+
 /* Expandable runs. The row is the <summary>, so the whole line is the hit area
    and the log arrives on first open — 20 logs per refresh would be 20 requests
    nobody asked for. */

@@ -332,6 +332,35 @@ sind nur Läufe, die gerade auf der Seite stehen — der Endpunkt ist damit kein
 Leser für die ganze Instanz. ANSI-Farbcodes werden entfernt, statt sie als Markup
 aus Fremdtext neu zu bauen.
 
+### Widget `beads`
+
+Zeigt die [beads](https://github.com/gastownhall/beads)-Task-Graphen der
+genannten Repos: Epics mit eingerückten Kind-Tasks, Blocker (`wartet auf …`),
+Prioritäten, und pro Repo die Zeile `offen / ready / erledigt`. Ein Bead, der
+per `external_ref: gh-<n>` aus einem GitHub-Issue migriert wurde, verlinkt
+dorthin.
+
+```yaml
+- type: beads
+  title: Beads · Task-Graph
+  token-env: GITHUB_PAT     # Variablenname, nicht der Wert
+  cache: 5m
+  repos:
+    - niclasedge/IaC-Stack
+```
+
+Gelesen wird **nicht** die Dolt-Datenbank (die erreicht GitHub nur als
+`refs/dolt/data`, für einen Viewer unbrauchbar), sondern der committete
+JSONL-Export `.beads/issues.jsonl` — den erzeugt `export.auto` in der
+`.beads/config.yaml` des jeweiligen Repos. Der Abruf läuft über die
+Contents-API mit `If-None-Match`; ein unveränderter Export ist damit ein
+gratis-304 wie überall sonst in dieser App.
+
+Die Repo-Liste ist bewusst explizit statt entdeckt: jedes Repo *ohne* die
+Datei würde pro Runde einen 404 kosten, und 404er sind — anders als 304er —
+nie gratis. Ein gelistetes Repo ohne Export verschwindet nicht, sondern sagt
+„keine Beads-DB": ein Tippfehler in der Liste soll sichtbar sein.
+
 ### Widget `ollama`
 
 Beantwortet die zwei Fragen, die `ollama list` und `ollama ps` beantworten: was
