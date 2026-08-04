@@ -335,10 +335,12 @@ aus Fremdtext neu zu bauen.
 ### Widget `beads`
 
 Zeigt die [beads](https://github.com/gastownhall/beads)-Task-Graphen der
-genannten Repos: Epics mit eingerückten Kind-Tasks, Blocker (`wartet auf …`),
-Prioritäten, und pro Repo die Zeile `offen / ready / erledigt`. Ein Bead, der
-per `external_ref: gh-<n>` aus einem GitHub-Issue migriert wurde, verlinkt
-dorthin.
+genannten Repos in einem Dreipane-Layout wie die Planner-Seite: links die
+Repo-Liste mit `offen / ready / erledigt`, in der Mitte der Baum (Epics mit
+eingerückten Kind-Tasks, Blocker als `wartet auf …`, Prioritäten, Tags), rechts
+die Details des angewählten Beads inklusive Beschreibung, Kind-Aufgaben und —
+bei einem per `external_ref: gh-<n>` migrierten Issue — dem Link dorthin. Die
+Panele sind wie beim Planner per Drag verschiebbar und merken sich ihre Breite.
 
 ```yaml
 - type: beads

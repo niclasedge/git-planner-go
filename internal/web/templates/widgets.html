@@ -188,31 +188,154 @@
 
 
 {{ define "widget-beads" }}
-{{ range .Sections }}
-<div class="sema-sum">
-  <a class="row-t" href="{{ .URL }}" target="_blank" rel="noopener">{{ .Name }}</a>
-  {{ if .Missing }}
-  <span class="sema-c">keine Beads-DB (.beads/issues.jsonl fehlt)</span>
+{{ $secs := .Sections }}
+{{ $first := "" }}
+{{ if $secs }}{{ $first = (index $secs 0).Name }}{{ end }}
+<div class="bd" id="bd{{ .ID }}">
+  {{ if $secs }}
+  <aside class="bd-pane bd-repos">
+    <div class="pane-header">Repositories <span class="ph-n">{{ len $secs }}</span></div>
+    <div class="repo-list">
+      {{ range $secs }}
+      <a class="repo-item bd-repo{{ if eq .Name $first }} active{{ end }}{{ if .Missing }} missing{{ end }}"
+         href="#" data-repo="{{ .Name }}" data-open="{{ .Open }}" data-ready="{{ .Ready }}" data-closed="{{ .Closed }}"
+         title="{{ .Name }}{{ if .Missing }} — keine Beads-DB{{ end }}">
+        <div class="ri-top">
+          <span class="name">{{ .Name }}</span>
+          {{ if .Missing }}
+          <span class="count">—</span>
+          {{ else }}
+          <span class="ri-trio" title="offen / ready / erledigt">{{ .Open }}/{{ .Ready }}/{{ .Closed }}</span>
+          {{ end }}
+        </div>
+      </a>
+      {{ end }}
+    </div>
+  </aside>
+  <div class="resizer" data-bd-resize="sidebar"></div>
+  <main class="bd-pane bd-issues">
+    <div class="pane-header">
+      <span class="bd-title">{{ $first }}</span>
+      <span class="ph-n bd-count">{{ if $secs }}{{ (index $secs 0).Open }} offen{{ end }}</span>
+    </div>
+    {{ range $secs }}
+    <div class="bd-list{{ if eq .Name $first }} active{{ end }}" data-repo="{{ .Name }}">
+      {{ if .Missing }}
+      <div class="empty"><p>keine Beads-DB (.beads/issues.jsonl fehlt)</p></div>
+      {{ else }}
+      {{ with .Err }}<div class="banner">{{ . }}</div>{{ end }}
+      {{ range .Roots }}{{ render "bead-row" . }}{{ range .Children }}<div class="bead-child">{{ render "bead-row" . }}</div>{{ end }}{{ end }}
+      {{ end }}
+    </div>
+    {{ end }}
+  </main>
+  <div class="resizer" data-bd-resize="detail"></div>
+  <section class="bd-pane bd-detail">
+    <a class="back-btn" href="#" data-bd-back>&larr; zurück</a>
+    <div class="bd-details">
+      <article class="detail" data-bead="">
+        <div class="empty"><p>Bead auswählen.</p></div>
+      </article>
+      {{ range $secs }}{{ range .Roots }}{{ render "bead-detail" . }}{{ range .Children }}{{ render "bead-detail" . }}{{ end }}{{ end }}{{ end }}
+    </div>
+  </section>
+  <script>
+  (function () {
+    var wid = {{ .ID }};
+    var root = document.getElementById('bd' + wid);
+    if (!root || root.dataset.booted) return;
+    root.dataset.booted = '1';
+
+    var KEY_REPO = 'bd_repo_' + wid, KEY_BEAD = 'bd_bead_' + wid,
+        KEY_S = 'bd_side_' + wid, KEY_D = 'bd_detail_' + wid;
+
+    function nodes(sel) { return Array.prototype.slice.call(root.querySelectorAll(sel)); }
+
+    function selectRepo(name) {
+      var hit = false;
+      nodes('.bd-repo').forEach(function (r) {
+        var on = r.dataset.repo === name;
+        r.classList.toggle('active', on);
+        if (on) hit = true;
+      });
+      if (!hit) return;
+      nodes('.bd-list').forEach(function (l) { l.classList.toggle('active', l.dataset.repo === name); });
+      root.querySelector('.bd-title').textContent = name;
+      var r = root.querySelector('.bd-repo.active');
+      root.querySelector('.bd-count').textContent = (r ? r.dataset.open : '') + ' offen';
+      localStorage.setItem(KEY_REPO, name);
+      selectBead(null);
+    }
+
+    function selectBead(id) {
+      var sel = id || '';
+      nodes('.bd-details > [data-bead]').forEach(function (d) { d.hidden = d.dataset.bead !== sel; });
+      nodes('.bd-row').forEach(function (row) { row.classList.toggle('active', row.dataset.bead === id); });
+      if (sel) { root.querySelector('.bd-detail').classList.add('show'); localStorage.setItem(KEY_BEAD, id); }
+      else root.querySelector('.bd-detail').classList.remove('show');
+    }
+
+    root.addEventListener('click', function (e) {
+      var repo = e.target.closest('.bd-repo');
+      if (repo) { e.preventDefault(); selectRepo(repo.dataset.repo); return; }
+      var row = e.target.closest('.bd-row');
+      if (row) { selectBead(row.dataset.bead); return; }
+      if (e.target.closest('[data-bd-back]')) { e.preventDefault(); selectBead(null); }
+    });
+
+    // Initial state: the persisted repo/bead when they still exist, otherwise
+    // the first repo the server marked active and no bead.
+    var savedRepo = localStorage.getItem(KEY_REPO);
+    if (savedRepo && root.querySelector('.bd-repo[data-repo="' + savedRepo + '"]')) selectRepo(savedRepo);
+    else { var active = root.querySelector('.bd-repo.active'); if (active) selectRepo(active.dataset.repo); }
+    var savedBead = localStorage.getItem(KEY_BEAD);
+    if (savedBead && root.querySelector('.bd-details [data-bead="' + savedBead + '"]')) selectBead(savedBead);
+
+    // Column widths, scoped to this widget so the planner's --col-* stay alone.
+    // Same interaction as the planner: drag the handles, double-click resets.
+    var clamp = function (v, mn, mx) { return Math.max(mn, Math.min(mx, v)); };
+    (function () {
+      var sv = parseInt(localStorage.getItem(KEY_S)); if (sv) root.style.setProperty('--bd-side', sv + 'px');
+      var dv = parseInt(localStorage.getItem(KEY_D)); if (dv) root.style.setProperty('--bd-detail', dv + 'px');
+    })();
+    function resizable(sel, varName, storeKey, sign, min, maxFn) {
+      var el = root.querySelector(sel); if (!el) return;
+      el.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        var pane = root.querySelector(varName === '--bd-side' ? '.bd-repos' : '.bd-detail');
+        var startX = e.clientX, startW = pane.getBoundingClientRect().width;
+        el.classList.add('dragging'); document.body.classList.add('col-resizing');
+        el.setPointerCapture(e.pointerId);
+        var move = function (ev) {
+          root.style.setProperty(varName, clamp(startW + sign * (ev.clientX - startX), min, maxFn()) + 'px');
+        };
+        var up = function () {
+          try { el.releasePointerCapture(e.pointerId); } catch (_) {}
+          el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up);
+          el.classList.remove('dragging'); document.body.classList.remove('col-resizing');
+          localStorage.setItem(storeKey, String(Math.round(parseFloat(root.style.getPropertyValue(varName)) || startW)));
+        };
+        el.addEventListener('pointermove', move); el.addEventListener('pointerup', up);
+      });
+      el.addEventListener('dblclick', function () {
+        root.style.removeProperty(varName); localStorage.removeItem(storeKey);
+      });
+    }
+    // Handle A drags the repo pane wider; handle B drags the detail pane narrower,
+    // which is why its sign is inverted — the middle absorbs the difference.
+    resizable('[data-bd-resize="sidebar"]', '--bd-side', KEY_S, 1, 150, function () { return Math.min(420, innerWidth * 0.4); });
+    resizable('[data-bd-resize="detail"]', '--bd-detail', KEY_D, -1, 320, function () { return Math.min(760, innerWidth * 0.6); });
+  })();
+  </script>
   {{ else }}
-  <span class="sema-n {{ if .Open }}ok{{ else }}idle{{ end }}">{{ .Open }} offen</span>
-  <span class="sema-c">{{ .Ready }} ready · {{ .Closed }} erledigt</span>
+  <div class="empty"><p>keine Repos konfiguriert</p></div>
   {{ end }}
 </div>
-{{ with .Err }}<div class="banner">{{ . }}</div>{{ end }}
-<div class="list">
-  {{ range .Roots }}
-  {{ render "bead-row" . }}
-  {{ range .Children }}
-  <div class="bead-child">{{ render "bead-row" . }}</div>
-  {{ end }}
-  {{ end }}
-</div>
-{{ end }}
 {{ end }}
 
 
 {{ define "bead-row" }}
-<div class="row">
+<div class="row bd-row" data-bead="{{ .ID }}">
   <span class="dot o-{{ .Dot }}" title="{{ if .Blocked }}blockiert{{ else }}{{ .Status }}{{ end }}"></span>
   <div class="row-main">
     <span class="row-t">
@@ -227,6 +350,41 @@
     </div>
   </div>
 </div>
+{{ end }}
+
+
+{{ define "bead-detail" }}
+{{ with . }}
+<article class="detail" data-bead="{{ .ID }}">
+  <div class="bd-detail-head">
+    <span class="dot o-{{ .Dot }}" title="{{ if .Blocked }}blockiert{{ else }}{{ .Status }}{{ end }}"></span>
+    <span class="num">{{ .Repo }} · {{ .ID }}</span>
+    {{ if .Blocked }}<span class="due-badge due-red" title="wartet auf: {{ range $i, $b := .BlockedBy }}{{ if $i }}, {{ end }}{{ $b }}{{ end }}">blockiert</span>{{ end }}
+    {{ with .GHURL }}<a class="btn tiny" href="{{ . }}" target="_blank" rel="noopener">GitHub ↗</a>{{ end }}
+  </div>
+  <h2>{{ .Title }}</h2>
+  <div class="meta-row">
+    <span class="num">{{ .Type }}{{ if .Priority }} · P{{ .Priority }}{{ end }}</span>
+    {{ range .Labels }}<span class="label" style="{{ labelStyle "6e7681" }}">{{ . }}</span>{{ end }}
+  </div>
+  {{ if .Description }}
+  <div class="body">{{ markdown .Description }}</div>
+  {{ else }}
+  <div class="empty"><p>keine Beschreibung</p></div>
+  {{ end }}
+  {{ if .Children }}
+  <div class="cmt-head">Unter-Aufgaben <span class="ph-n">{{ len .Children }}</span></div>
+  <div class="bd-kids">
+    {{ range .Children }}
+    <div class="row bd-row" data-bead="{{ .ID }}">
+      <span class="dot o-{{ .Dot }}" title="{{ if .Blocked }}blockiert{{ else }}{{ .Status }}{{ end }}"></span>
+      <div class="row-main"><span class="row-t">{{ .Title }}</span></div>
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
+</article>
+{{ end }}
 {{ end }}
 
 

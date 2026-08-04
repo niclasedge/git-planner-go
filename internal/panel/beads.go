@@ -69,6 +69,11 @@ type Bead struct {
 	Type     string // task | bug | feature | epic | chore | decision
 	Priority int
 	Labels   []string
+	// Description is the issue body, rendered in the detail pane.
+	Description string
+	// Repo is the owner/repo this bead came from, so a detail article does not
+	// need the enclosing repo's scope.
+	Repo string
 	// GHURL links the migrated GitHub issue, derived from an external_ref of
 	// the form "gh-<n>". Other ref forms are kept as text only.
 	GHURL     string
@@ -98,6 +103,7 @@ type beadRecord struct {
 	RecType      string   `json:"_type"`
 	ID           string   `json:"id"`
 	Title        string   `json:"title"`
+	Description  string   `json:"description"`
 	Status       string   `json:"status"`
 	Priority     int      `json:"priority"`
 	IssueType    string   `json:"issue_type"`
@@ -236,10 +242,10 @@ func (r *BeadsRepo) URL() string { return "https://github.com/" + r.Name }
 // own compaction will eventually retire them from the export anyway.
 func parseBeads(body io.Reader, repo string) (roots []*Bead, open, ready, closed int, err error) {
 	byID := map[string]*Bead{}
-	parent := map[string]string{}          // child id → parent id
-	blockers := map[string][]string{}      // id → ids it depends on (type blocks)
-	status := map[string]string{}          // id → status, blockers need it for closed ones too
-	var order []string                     // export order, the stable tiebreak
+	parent := map[string]string{}     // child id → parent id
+	blockers := map[string][]string{} // id → ids it depends on (type blocks)
+	status := map[string]string{}     // id → status, blockers need it for closed ones too
+	var order []string                // export order, the stable tiebreak
 
 	sc := bufio.NewScanner(body)
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024) // one issue per line, bodies included
@@ -272,13 +278,15 @@ func parseBeads(body io.Reader, repo string) (roots []*Bead, open, ready, closed
 		}
 		open++
 		byID[rec.ID] = &Bead{
-			ID:       rec.ID,
-			Title:    rec.Title,
-			Status:   rec.Status,
-			Type:     rec.IssueType,
-			Priority: rec.Priority,
-			Labels:   rec.Labels,
-			GHURL:    ghIssueURL(repo, rec.ExternalRef),
+			ID:          rec.ID,
+			Title:       rec.Title,
+			Description: rec.Description,
+			Repo:        repo,
+			Status:      rec.Status,
+			Type:        rec.IssueType,
+			Priority:    rec.Priority,
+			Labels:      rec.Labels,
+			GHURL:       ghIssueURL(repo, rec.ExternalRef),
 		}
 		order = append(order, rec.ID)
 	}

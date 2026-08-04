@@ -1075,3 +1075,49 @@ a.seg-i { text-decoration: none; text-align: center; }
   .panes { grid-template-columns: minmax(0, 1fr); }
   #resizerA, .pane-repos { display: none; }
 }
+
+/* Beads (widget) ---------------------------------------------------------
+   The beads widget borrows the planner's three-pane geometry — repos left,
+   tree middle, detail right — but lives inside a widget card, so it owns its
+   own column variables and never touches the planner's --col-sidebar/-detail.
+   The negative margin lets the panes bleed to the card edge like .list does. */
+.bd {
+  display: grid;
+  grid-template-columns: var(--bd-side, 200px) 6px minmax(0, 1fr) 6px var(--bd-detail, 420px);
+  height: min(58vh, 560px);
+  min-height: 0;
+  margin: -12px -14px;
+}
+.bd .bd-pane { min-height: 0; overflow-y: auto; }
+.bd .bd-repos { background: var(--bg); overflow: hidden; display: flex; flex-direction: column; padding: 6px 0 0; }
+.bd .bd-issues { background: var(--surface); }
+.bd .bd-detail { background: var(--bg); }
+.bd .bd-issues .pane-header { background: var(--surface); }
+.bd .repo-list { padding: 0 8px 24px; }
+.bd .repo-item.missing .name { color: var(--faint); }
+
+.bd-list { display: none; padding: 0 8px 16px; }
+.bd-list.active { display: block; }
+.bd-row { cursor: pointer; border-radius: var(--r); border: 1px solid transparent; }
+.bd-row:hover { background: var(--lift); border-color: var(--border); }
+.bd-row.active { background: var(--accent-bg); border-color: var(--accent-line); }
+
+.bd-details > .detail[hidden] { display: none; }
+.bd-detail-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.bd-detail-head .num { font-family: var(--mono); font-size: 12px; color: var(--fg3); }
+.bd-detail-head .btn { margin-left: auto; }
+.bd-kids { margin-top: 6px; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.bd-kids .row { border-radius: 0; }
+.bd-kids .row + .row { border-top: 1px solid var(--border); }
+
+/* Narrow: the same two-step collapse as the planner page. */
+@media (max-width: 1100px) {
+  .bd { grid-template-columns: var(--bd-side, 200px) 6px minmax(0, 1fr); }
+  .bd [data-bd-resize="detail"], .bd .bd-detail { display: none; }
+  .bd .bd-detail.show { display: block; position: fixed; inset: 0; z-index: 50; background: var(--bg); overflow-y: auto; }
+  .bd .bd-detail.show .back-btn { display: block; }
+}
+@media (max-width: 760px) {
+  .bd { grid-template-columns: minmax(0, 1fr); }
+  .bd [data-bd-resize="sidebar"], .bd .bd-repos { display: none; }
+}
