@@ -338,11 +338,12 @@ Zeigt die [beads](https://github.com/gastownhall/beads)-Task-Graphen der
 genannten Repos **full-screen in drei Panes wie die Planner-Seite**: links die
 Repo-Liste mit `offen / ready / erledigt`, in der Mitte oben die Ready-Queue
 (offene, unblocked, kinderlos-Beads — „was kann ich jetzt tun") und darunter
-der Baum (Epics mit eingerückten Kind-Tasks, Blocker als `wartet auf …`,
-Prioritäten, Tags), rechts die Details des angewählten Beads inklusive
-Beschreibung, Kind-Aufgaben und — bei einem per `external_ref: gh-<n>`
-migrierten Issue — dem Link dorthin. Die Panels sind wie beim Planner per Drag
-verschiebbar und merken sich ihre Breite.
+der Baum (Epics mit eingerückten Kind-Tasks, Prioritäten, Tags), rechts die
+Details des angewählten Beads inklusive Beschreibung, Kind-Aufgaben und — bei
+einem per `external_ref: gh-<n>` migrierten Issue — dem Link dorthin. Ein Bead,
+das auf ein anderes wartet, hängt **eingerückt mit `↳` unter seinem Blocker**
+(das gilt als Reihenfolge: erst den Blocker erledigen, dann das Wartende). Die
+Panels sind wie beim Planner per Drag verschiebbar und merken sich ihre Breite.
 
 ```yaml
 - type: beads
