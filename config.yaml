@@ -97,6 +97,7 @@ pages:
             cache: 5m
             repos:
               - niclasedge/IaC-Stack
+              - niclasedge/affiliate-hub-tools
 
   # From here on the config decides. Available widget types: monitor, bookmarks,
   # iframe, html.
