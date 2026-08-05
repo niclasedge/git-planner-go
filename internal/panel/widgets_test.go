@@ -203,6 +203,28 @@ func TestLookupShots_FindsFileAndSkipsEmpty(t *testing.T) {
 	}
 }
 
+// expect-status flips the meaning of one code: behind Traefik BasicAuth the
+// middleware's 401 is the healthy answer, and anything else — including the
+// 200 that appears when the auth is removed — must read as down.
+func TestSiteUpExpectStatus(t *testing.T) {
+	cases := []struct {
+		name string
+		site Site
+		want bool
+	}{
+		{"expected 401 is up", Site{Status: 401, ExpectStatus: 401}, true},
+		{"unexpected 200 is down", Site{Status: 200, ExpectStatus: 401}, false},
+		{"error wins over match", Site{Status: 401, ExpectStatus: 401, Error: "x"}, false},
+		{"unset keeps 2xx-3xx rule", Site{Status: 303}, true},
+		{"unset keeps 401 down", Site{Status: 401}, false},
+	}
+	for _, c := range cases {
+		if got := c.site.Up(); got != c.want {
+			t.Errorf("%s: Up() = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
 // The four exposure states, because "the port is open" and "anyone can walk in"
 // are different facts and the widget must not blur them.
 func TestSiteExposure(t *testing.T) {

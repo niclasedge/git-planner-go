@@ -79,7 +79,14 @@ type Site struct {
 	// which for a box that also serves things over Tailscale only is not
 	// something the internal check can tell you. Left empty the service counts
 	// as internal, matching services.yml: no domain, no public route.
-	PublicURL     string          `yaml:"public-url"`
+	PublicURL string `yaml:"public-url"`
+	// ExpectStatus makes exactly this code count as up instead of 2xx/3xx.
+	// For a service whose every path sits behind Traefik BasicAuth the probe
+	// can only ever see the middleware's 401 — that answer proves the route,
+	// so it is the healthy state. It cuts both ways: if the auth is ever
+	// removed, the then-200 stops matching and the row turns red, which is
+	// the right alarm for "this was supposed to be guarded".
+	ExpectStatus  int             `yaml:"expect-status"`
 	Icon          string          `yaml:"icon"`
 	Timeout       config.Duration `yaml:"timeout"`
 	AllowInsecure bool            `yaml:"allow-insecure"`
@@ -115,7 +122,13 @@ func (s *Site) target() string {
 }
 
 func (s *Site) Up() bool {
-	return s.Error == "" && s.Status >= 200 && s.Status < 400
+	if s.Error != "" {
+		return false
+	}
+	if s.ExpectStatus != 0 {
+		return s.Status == s.ExpectStatus
+	}
+	return s.Status >= 200 && s.Status < 400
 }
 
 // Slug is the site's file name for a screenshot, group included. Derived from

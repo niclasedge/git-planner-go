@@ -142,30 +142,78 @@ pages:
                     url: http://100.123.180.46:8091
                     timeout: 3s
 
-              # public-url ist die Traefik-Route desselben Dienstes. Damit sagt
-              # die Zeile nicht nur „läuft“, sondern auch „ist von außen
-              # erreichbar“ — bei einer Kiste, die manches nur ins Tailnet
-              # hängt, zwei verschiedene Aussagen. Die Domains stehen im
-              # IaC-Stack in services.yml (domain_suffix: niclasedge.com); wer
-              # dort kein domain: hat, ist bewusst intern.
+              # Seit dem Traefik-Umbau publishen die netcup-Dienste keine
+              # Host-Ports mehr (kein `ports:` in ihren compose-Dateien) — die
+              # alten Tailnet-IP:Port-Checks starben deshalb als „context
+              # deadline exceeded“. Geprüft wird jetzt die Traefik-Route:
+              # url und public-url sind dieselbe Adresse, weil es nur noch
+              # diese eine beobachtbare Ebene gibt. Das Badge bleibt trotzdem,
+              # es unterscheidet „öffentlich“ von „öffentlich · Auth“.
+              # Nur Semaphore (3001) und SearXNG (8082) publishen weiterhin
+              # einen Port und haben keine Domain — die bleiben auf der
+              # Tailnet-IP. Die Domains stehen im IaC-Stack in services.yml
+              # (domain_suffix: niclasedge.com); wer dort kein domain: hat,
+              # ist bewusst intern.
+              #
+              # check-url zeigt auf den Health-Endpoint, wo services.yml einen
+              # nennt — bei rss-reader zwingend, weil / hinter BasicAuth 401
+              # liefert. glance und Global Dashboard haben keinen freien
+              # Health-Pfad, dort IST der 401 der user-auth@file-Middleware
+              # die gesunde Antwort: expect-status macht genau ihn grün und
+              # schlägt an, falls die Auth je verschwindet.
               - title: netcup3 · Docker
                 sites:
                   - title: Semaphore
                     url: http://100.109.141.47:3001
-                  - title: Kanban
-                    url: http://100.109.141.47:3000
-                    public-url: https://kanban.niclasedge.com
-                  - title: ntfy
-                    url: http://100.109.141.47:8080
-                    public-url: https://ntfy.niclasedge.com
                   - title: SearXNG
                     url: http://100.109.141.47:8082
+                  - title: Kanban
+                    url: https://kanban.niclasedge.com
+                    public-url: https://kanban.niclasedge.com
+                  - title: ntfy
+                    url: https://ntfy.niclasedge.com
+                    public-url: https://ntfy.niclasedge.com
                   - title: glance
-                    url: http://100.109.141.47:8888
+                    url: https://glances.niclasedge.com
+                    expect-status: 401
                     public-url: https://glances.niclasedge.com
                   - title: Global Dashboard
-                    url: http://100.109.141.47:8503
+                    url: https://kanban2.niclasedge.com
+                    expect-status: 401
                     public-url: https://kanban2.niclasedge.com
+                  - title: RSS-Reader
+                    url: https://rss.niclasedge.com
+                    check-url: https://rss.niclasedge.com/healthz
+                    public-url: https://rss.niclasedge.com
+                  - title: Family-Tree
+                    url: https://family.niclasedge.com
+                    check-url: https://family.niclasedge.com/api/health
+                    public-url: https://family.niclasedge.com
+                  - title: Miniflux
+                    url: https://miniflux.niclasedge.com
+                    check-url: https://miniflux.niclasedge.com/healthcheck
+                    public-url: https://miniflux.niclasedge.com
+                  - title: Healthchecks
+                    url: https://health.niclasedge.com
+                    public-url: https://health.niclasedge.com
+                  - title: Uptime-Kuma
+                    url: https://kuma.niclasedge.com
+                    public-url: https://kuma.niclasedge.com
+                  - title: Vaultwarden
+                    url: https://vaultwarden.niclasedge.com
+                    public-url: https://vaultwarden.niclasedge.com
+                  - title: Beszel
+                    url: https://beszel.niclasedge.com
+                    public-url: https://beszel.niclasedge.com
+                  - title: Plausible
+                    url: https://plausible.niclasedge.com
+                    public-url: https://plausible.niclasedge.com
+                  - title: Jellyfin
+                    url: https://jellyfin.niclasedge.com
+                    public-url: https://jellyfin.niclasedge.com
+                  - title: Ghost Wedding
+                    url: https://art-weddings.de
+                    public-url: https://art-weddings.de
 
               # Fremde Dienste: „ist das öffentlich erreichbar“ ist eine Frage
               # über eigene Hosts, deshalb hier kein Exposure-Badge.

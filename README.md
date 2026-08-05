@@ -468,6 +468,25 @@ Eine Gruppe fremder Dienste bekommt `external: true` und damit **kein** Badge �
 als „intern“ zu bezeichnen wäre eine Aussage über eine Installation, die nicht
 uns gehört.
 
+#### Alles hinter BasicAuth — `expect-status`
+
+Ein Dienst, dessen sämtliche Pfade hinter Traefiks `user-auth@file` liegen,
+zeigt dem Probe nur den 401 der Middleware — es gibt keinen Pfad, der 200
+liefern könnte. Dann ist der 401 die gesunde Antwort:
+
+```yaml
+- title: glance
+  url: https://glances.niclasedge.com
+  expect-status: 401
+```
+
+`expect-status` ersetzt die 2xx/3xx-Regel für genau diese eine Site: nur der
+genannte Code zählt als grün. Das schneidet in beide Richtungen — fällt die
+Auth je weg, antwortet die Route mit 200, der Code passt nicht mehr und die
+Zeile wird rot. Für „das sollte geschützt sein“ ist das der richtige Alarm.
+Wo es einen ungeschützten Health-Pfad gibt (rss-reader `/healthz`), ist
+`check-url` das bessere Werkzeug: er prüft die App, nicht die Middleware.
+
 Welche Domain zu welchem Dienst gehört, steht im IaC-Stack in `services.yml`
 (`domain_suffix: niclasedge.com`); wer dort kein `domain:` hat, ist bewusst
 intern.
