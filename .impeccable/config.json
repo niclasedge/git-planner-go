@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "internal/web/static/css/app.css"
+        ],
+        "createdAt": "2026-08-06T05:32:20.205Z",
+        "reason": "Markdown-blockquote rule for rendered issue bodies (.detail .body blockquote): neutral --border-2 token at 3px, not an accent side-tab on a card."
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "internal/web/static/css/app.css"
+        ],
+        "createdAt": "2026-08-06T05:32:32.713Z",
+        "reason": "Two intentional sites: .site-shot animates width/height so object-fit re-crops at native resolution (a transform would magnify a 34x24 crop 4.4x into mush); .resizer::before is an absolutely-positioned 1px hairline that must land on device pixels. Both off under prefers-reduced-motion."
+      }
+    ]
+  }
+}

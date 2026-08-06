@@ -23,6 +23,11 @@ logs/
 *.log
 
 # Editor / OS
+# The impeccable design hook keeps its config here (committed — the two
+# rule suppressions are reviewable decisions that belong to this repo) next to
+# a per-run cache and a pending-findings file, which do not.
+.impeccable/hook.cache.json
+.impeccable/hook.pending.json
 .DS_Store
 .idea/
 .vscode/*
