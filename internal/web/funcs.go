@@ -22,10 +22,39 @@ var funcs = template.FuncMap{
 	"truncate":   truncate,
 	"lower":      strings.ToLower,
 	"add":        func(a, b int) int { return a + b },
+	"due":        dueChip,
 	"markdown":   renderMarkdown,
 	"row":        newRowCtx,
 	"topRow":     newTopRowCtx,
 	"subPct":     subPct,
+}
+
+// dueChip is the date chip for a template that holds a *time.Time rather than a
+// gh.Issue — the beads rows, whose type lives in package panel and so cannot
+// reach plannerData.DueBadge. It returns nil for a bead without a date, so
+// `{{ with due .Due }}` renders nothing at all.
+//
+// It exists so the overdue/heute/weekday/date thresholds keep exactly one
+// definition. A second copy for beads would drift from the planner's the first
+// time either side is tuned, and the two pages would then disagree about what
+// "diese Woche" means.
+// An overdue chip carries the date rather than dueBadge's "über": under a group
+// head that already reads "Überfällig" the word is the same statement twice,
+// while "1.8." adds the one thing the head cannot say — how long. The planner
+// solves the same redundancy by dropping the chip entirely, which it can afford
+// because its rows are grouped by nothing else; a bead row also appears in the
+// tree, where no head announces the state.
+func dueChip(t *time.Time) *agendaItem {
+	if t == nil {
+		return nil
+	}
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	badge, red := dueBadge(*t, today)
+	if red {
+		badge = t.Format("2.1.")
+	}
+	return &agendaItem{Badge: badge, Red: red}
 }
 
 // relTime renders a timestamp the way you read it at a glance: "4m", "3h", "6d".

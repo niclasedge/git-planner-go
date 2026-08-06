@@ -250,6 +250,31 @@
          href="#" data-repo="{{ .Name }}" data-open="{{ .Open }}" title="{{ .Name }}">{{ .Short }}{{ if .Ready }} <span class="n">{{ .Ready }}</span>{{ end }}</a>
       {{ end }}
     </div>
+    {{/* The agenda sits above the repo header and outside the repo switch, on
+         purpose: it is the only part of this page that is not scoped to the
+         selected repo. beads can store a date but notifies nobody, so an agenda
+         that hid an overdue bead whenever the other repo was selected would not
+         be a delivery either. It outranks Ready below it — a date has already
+         been committed to, "sofort machbar" is only a possibility.
+
+         Nothing dated means no section: .Agenda returns nil and this whole block
+         disappears, so a repo without dates looks exactly as it did before. */}}
+    {{ with .Agenda }}
+    <div class="bd-agenda">
+      {{/* .ag-kpi, not .ph-n: peach already means "terminiert" in the planner's
+           agenda, and the same state should not get a second colour here. */}}
+      <div class="pane-header">Agenda <span class="ag-kpi" title="offene Beads mit Due-Date, über alle Repos">{{ render "ico-target" . }} {{ .Total }}</span></div>
+      <div class="bd-agenda-list">
+        {{ range .Groups }}
+        {{/* Both groups count in the same right-hand column Ready and Baum use.
+             "Überfällig (2)" above "Anstehend … 3" put two counting styles in
+             adjacent lines; the red title carries the urgency on its own. */}}
+        <div class="sec-head bd-sec-agenda{{ if .Overdue }} ov{{ end }}">{{ .Title }}<span class="sec-n">{{ len .Items }}</span></div>
+        {{ range .Items }}{{ render "bead-agenda-row" . }}{{ end }}
+        {{ end }}
+      </div>
+    </div>
+    {{ end }}
     <div class="pane-header">
       <span class="bd-title">{{ $first }}</span>
       <span class="ph-n bd-count">{{ if $secs }}{{ (index $secs 0).Open }} offen{{ end }}</span>
@@ -297,7 +322,11 @@
           <p>Eingerückte Zeilen sind Unter-Aufgaben oder warten auf die Zeile darüber; der amberne Ring am Punkt heißt „blockiert".</p>
         </div>
       </article>
-      {{ range $secs }}{{ range .Roots }}{{ render "bead-detail" . }}{{ range .Children }}{{ render "bead-detail" . }}{{ end }}{{ end }}{{ end }}
+      {{/* .All, not a walk over Roots: that reached two levels and left every
+           deeper bead — a waiter under a child, say — with no detail article, so
+           its row selected nothing. The agenda made that reachable in one click
+           from any repo, which is what surfaced it. */}}
+      {{ range $secs }}{{ range .All }}{{ render "bead-detail" . }}{{ end }}{{ end }}
     </div>
   </section>
   <script>
@@ -418,6 +447,10 @@
          row on the rows that carry `wayfinder:map` + `wayfinder:task`, i.e.
          loudest exactly where it says least. GitHub labels keep labelStyle: there
          the colour is data the repo chose. */}}
+    {{/* The date leads the meta group: it is the one item here that has already
+         been committed to, and it is what the agenda above sorts by. $d keeps the
+         raw time in scope — inside `with due` the dot is the chip, not the bead. */}}
+    {{ $d := .Due }}{{ with due $d }}<span class="due-badge {{ if .Red }}due-red{{ else }}due-blue{{ end }}" title="fällig {{ $d.Format "2.1.2006" }}">{{ .Badge }}</span>{{ end }}
     {{ range .Labels }}<span class="label soft">{{ . }}</span>{{ end }}
     <span class="num">{{ .ID }}</span>
     <span class="pri p{{ .Priority }}" title="Priorität {{ .Priority }}">P{{ .Priority }}</span>
@@ -428,12 +461,32 @@
 {{ end }}
 
 
+{{/* The agenda's own row shape. It carries .bd-row so the existing click handler
+     opens the detail unchanged, but drops the labels and the priority chip: this
+     list is ordered by date, and repeating "P2" next to a deadline invites reading
+     it as the rank. What it adds instead is the repo — the agenda is the one
+     cross-repo list on the page, so a row has to say where it came from. */}}
+{{ define "bead-agenda-row" }}
+<div class="row bd-row ag-row" data-bead="{{ .ID }}">
+  <span class="dot o-{{ .Dot }}" title="{{ if .Blocked }}wartet auf {{ range $i, $b := .BlockedBy }}{{ if $i }}, {{ end }}{{ $b }}{{ end }}{{ else }}{{ .Status }}{{ end }}"></span>
+  <div class="row-main">
+    <span class="row-t">{{ .Title }}</span>
+  </div>
+  <div class="row-meta">
+    <span class="ag-repo" title="{{ .Repo }} · {{ .ID }}">{{ .RepoShort }}</span>
+    {{ $d := .Due }}{{ with due $d }}<span class="due-badge {{ if .Red }}due-red{{ else }}due-blue{{ end }}" title="fällig {{ $d.Format "2.1.2006" }}">{{ .Badge }}</span>{{ end }}
+  </div>
+</div>
+{{ end }}
+
+
 {{ define "bead-detail" }}
 {{ with . }}
 <article class="detail" data-bead="{{ .ID }}">
   <div class="bd-detail-head">
     <span class="dot o-{{ .Dot }}" title="{{ if .Blocked }}blockiert{{ else }}{{ .Status }}{{ end }}"></span>
     <span class="num">{{ .Repo }} · {{ .ID }}</span>
+    {{ with .Due }}<span class="due-badge {{ if (due .).Red }}due-red{{ else }}due-blue{{ end }}" title="Due-Date aus `bd --due`">{{ render "ico-target" . }} {{ .Format "2.1.2006" }}</span>{{ end }}
     {{ if .Blocked }}<span class="due-badge due-red" title="wartet auf: {{ range $i, $b := .BlockedBy }}{{ if $i }}, {{ end }}{{ $b }}{{ end }}">blockiert</span>{{ end }}
     {{ with .GHURL }}<a class="btn tiny" href="{{ . }}" target="_blank" rel="noopener">GitHub ↗</a>{{ end }}
   </div>

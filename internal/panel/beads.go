@@ -60,6 +60,12 @@ type BeadsRepo struct {
 	// ReadyList is the actionable set — the Ready count as rows, so the page
 	// can show "was kann ich jetzt tun" at the top of the tree.
 	ReadyList []*Bead
+	// All is every open bead in export order, flat. It is what the detail pane
+	// renders from: walking Roots reaches only two levels deep, and a bead in a
+	// blocker cycle is dropped from Roots entirely (each of the two ends up as
+	// the other's waiter), so a tree walk cannot promise every bead has a detail
+	// article. The agenda links across repos and needs that promise.
+	All []*Bead
 
 	etag string
 }
@@ -79,7 +85,10 @@ type Bead struct {
 	Repo string
 	// GHURL links the migrated GitHub issue, derived from an external_ref of
 	// the form "gh-<n>". Other ref forms are kept as text only.
-	GHURL     string
+	GHURL string
+	// Due is the target date from `bd --due`, nil when the bead carries none.
+	// A bead without a date must look exactly as it did before this field existed.
+	Due       *time.Time
 	Children  []*Bead
 	BlockedBy []string // IDs of the open issues blocking this one
 	// Waiters are the beads that wait on this one (their primary blocker is
@@ -89,6 +98,16 @@ type Bead struct {
 }
 
 func (b *Bead) Blocked() bool { return len(b.BlockedBy) > 0 }
+
+// RepoShort drops the owner, for the agenda row that has to name its repo in the
+// width of a chip. Same reduction as BeadsRepo.Short, on the bead itself because
+// an agenda row is not inside a repo's scope.
+func (b *Bead) RepoShort() string {
+	if i := strings.LastIndex(b.Repo, "/"); i >= 0 && i+1 < len(b.Repo) {
+		return b.Repo[i+1:]
+	}
+	return b.Repo
+}
 
 // Dot maps the bead onto the status vocabulary the other pages use, so the
 // colours mean the same thing everywhere.
@@ -112,15 +131,19 @@ func (b *Bead) Dot() string {
 
 // beadRecord is the JSONL line shape of `bd export` (schema/issues.jsonl).
 type beadRecord struct {
-	RecType      string   `json:"_type"`
-	ID           string   `json:"id"`
-	Title        string   `json:"title"`
-	Description  string   `json:"description"`
-	Status       string   `json:"status"`
-	Priority     int      `json:"priority"`
-	IssueType    string   `json:"issue_type"`
-	Labels       []string `json:"labels"`
-	ExternalRef  string   `json:"external_ref"`
+	RecType     string   `json:"_type"`
+	ID          string   `json:"id"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Status      string   `json:"status"`
+	Priority    int      `json:"priority"`
+	IssueType   string   `json:"issue_type"`
+	Labels      []string `json:"labels"`
+	ExternalRef string   `json:"external_ref"`
+	// DueAt is `bd create --due` as RFC3339. Its sibling `--defer` is stored in
+	// the Dolt DB but omitted by `bd export` 1.1.2, so a deferred date cannot be
+	// shown here at all — the DB is off-limits to consumers by design.
+	DueAt        string `json:"due_at"`
 	Dependencies []struct {
 		DependsOnID string `json:"depends_on_id"`
 		Type        string `json:"type"`
@@ -218,7 +241,8 @@ func (b *Beads) fetchRepo(ctx context.Context, st *BeadsRepo) {
 	case http.StatusNotFound:
 		b.mu.Lock()
 		st.Missing, st.Err = true, ""
-		st.Roots, st.ReadyList, st.Open, st.Ready, st.Closed = nil, nil, 0, 0, 0
+		st.Roots, st.ReadyList, st.All = nil, nil, nil
+		st.Open, st.Ready, st.Closed = 0, 0, 0
 		b.mu.Unlock()
 		return
 	case http.StatusOK:
@@ -228,13 +252,14 @@ func (b *Beads) fetchRepo(ctx context.Context, st *BeadsRepo) {
 		return
 	}
 
-	roots, readyList, open, ready, closed, err := parseBeads(resp.Body, st.Name)
+	roots, readyList, all, open, ready, closed, err := parseBeads(resp.Body, st.Name)
 	if err != nil {
 		b.setErr(st, err.Error())
 		return
 	}
 	b.mu.Lock()
-	st.Roots, st.ReadyList, st.Open, st.Ready, st.Closed = roots, readyList, open, ready, closed
+	st.Roots, st.ReadyList, st.All = roots, readyList, all
+	st.Open, st.Ready, st.Closed = open, ready, closed
 	st.Missing, st.Err = false, ""
 	st.etag = resp.Header.Get("ETag")
 	b.mu.Unlock()
@@ -258,10 +283,105 @@ func (r *BeadsRepo) Short() string {
 	return r.Name
 }
 
+// beadAgendaLimit caps the upcoming list for the same reason the planner's
+// agenda does: the section answers "what is close", not "everything dated".
+const beadAgendaLimit = 25
+
+// BeadAgenda is every dated bead of every configured repo, grouped into overdue
+// and upcoming.
+//
+// It is deliberately cross-repo and sits outside the repo switch: a date is only
+// a delivery if it reaches you without being asked for, and an agenda scoped to
+// the selected repo would hide an overdue bead in the other one. beads stores
+// dates but tells nobody — this section is the telling.
+type BeadAgenda struct {
+	Groups []BeadAgendaGroup
+	Total  int
+}
+
+// BeadAgendaGroup holds beads, not a flattened copy of them, so a click reaches
+// the same detail article the tree opens.
+type BeadAgendaGroup struct {
+	Title   string
+	Overdue bool
+	Items   []*Bead
+}
+
+// Agenda returns nil when nothing carries a date — the page then looks exactly
+// as it did before the section existed.
+func (b *Beads) Agenda() *BeadAgenda {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+
+	b.mu.RLock()
+	var dated []*Bead
+	for _, st := range b.state {
+		for _, bd := range st.All {
+			if bd.Due != nil {
+				dated = append(dated, bd)
+			}
+		}
+	}
+	b.mu.RUnlock()
+
+	if len(dated) == 0 {
+		return nil
+	}
+	sort.SliceStable(dated, func(i, j int) bool {
+		if !dated[i].Due.Equal(*dated[j].Due) {
+			return dated[i].Due.Before(*dated[j].Due)
+		}
+		if dated[i].Repo != dated[j].Repo {
+			return dated[i].Repo < dated[j].Repo
+		}
+		return dated[i].ID < dated[j].ID
+	})
+
+	ag := &BeadAgenda{Total: len(dated)}
+	var overdue, upcoming BeadAgendaGroup
+	overdue.Overdue = true
+	for _, bd := range dated {
+		if bd.Due.Before(today) {
+			overdue.Items = append(overdue.Items, bd)
+			continue
+		}
+		if len(upcoming.Items) < beadAgendaLimit {
+			upcoming.Items = append(upcoming.Items, bd)
+		}
+	}
+	if len(overdue.Items) > 0 {
+		overdue.Title = "Überfällig"
+		ag.Groups = append(ag.Groups, overdue)
+	}
+	if len(upcoming.Items) > 0 {
+		upcoming.Title = "Anstehend"
+		ag.Groups = append(ag.Groups, upcoming)
+	}
+	return ag
+}
+
+// parseDue normalises bd's RFC3339 stamp to midnight of the local calendar day.
+// Only the day is a deadline here: kept as a clock time, a bead due 08:03 would
+// read as overdue for the rest of that same day. UTC midnight matches how the
+// planner's agenda builds "today", so both use one date arithmetic.
+func parseDue(s string) *time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return nil // a date we cannot read is not a reason to drop the bead
+	}
+	t = t.Local()
+	day := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+	return &day
+}
+
 // parseBeads turns the JSONL export into render-ready trees. Closed issues are
 // counted but not shown: the page answers "what is there to do", and beads'
 // own compaction will eventually retire them from the export anyway.
-func parseBeads(body io.Reader, repo string) (roots, readyList []*Bead, open, ready, closed int, err error) {
+func parseBeads(body io.Reader, repo string) (roots, readyList, all []*Bead, open, ready, closed int, err error) {
 	byID := map[string]*Bead{}
 	parent := map[string]string{}     // child id → parent id
 	blockers := map[string][]string{} // id → ids it depends on (type blocks)
@@ -279,7 +399,7 @@ func parseBeads(body io.Reader, repo string) (roots, readyList []*Bead, open, re
 		}
 		var rec beadRecord
 		if err := json.Unmarshal([]byte(raw), &rec); err != nil {
-			return nil, nil, 0, 0, 0, fmt.Errorf("issues.jsonl line %d: %w", line, err)
+			return nil, nil, nil, 0, 0, 0, fmt.Errorf("issues.jsonl line %d: %w", line, err)
 		}
 		if rec.RecType != "" && rec.RecType != "issue" {
 			continue // messages, agents and other infrastructure beads
@@ -298,7 +418,7 @@ func parseBeads(body io.Reader, repo string) (roots, readyList []*Bead, open, re
 			continue
 		}
 		open++
-		byID[rec.ID] = &Bead{
+		bd := &Bead{
 			ID:          rec.ID,
 			Title:       rec.Title,
 			Description: rec.Description,
@@ -308,11 +428,14 @@ func parseBeads(body io.Reader, repo string) (roots, readyList []*Bead, open, re
 			Priority:    rec.Priority,
 			Labels:      rec.Labels,
 			GHURL:       ghIssueURL(repo, rec.ExternalRef),
+			Due:         parseDue(rec.DueAt),
 		}
+		byID[rec.ID] = bd
+		all = append(all, bd)
 		order = append(order, rec.ID)
 	}
 	if err := sc.Err(); err != nil {
-		return nil, nil, 0, 0, 0, fmt.Errorf("reading issues.jsonl: %w", err)
+		return nil, nil, nil, 0, 0, 0, fmt.Errorf("reading issues.jsonl: %w", err)
 	}
 
 	for _, id := range order {
@@ -366,7 +489,7 @@ func parseBeads(body io.Reader, repo string) (roots, readyList []*Bead, open, re
 		}
 	}
 	sortBeads(readyList)
-	return roots, readyList, open, ready, closed, nil
+	return roots, readyList, all, open, ready, closed, nil
 }
 
 // removeBead drops the first bead with the given id from the slice. It is what

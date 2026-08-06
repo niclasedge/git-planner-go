@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 // fixture mirrors what `bd export` writes: one issue per line, dependencies
@@ -20,7 +21,7 @@ const beadsFixture = `{"_type":"issue","id":"x-epic","title":"The map","status":
 `
 
 func TestParseBeads_TreeAndBlocking(t *testing.T) {
-	roots, readyList, open, ready, closed, err := parseBeads(strings.NewReader(beadsFixture), "o/r")
+	roots, readyList, all, open, ready, closed, err := parseBeads(strings.NewReader(beadsFixture), "o/r")
 	if err != nil {
 		t.Fatalf("parseBeads: %v", err)
 	}
@@ -76,10 +77,75 @@ func TestParseBeads_TreeAndBlocking(t *testing.T) {
 		}
 		t.Fatalf("readyList = %v, want [x-freed x-epic.1] (priority order)", ids)
 	}
+
+	// All is the flat set the detail pane renders from. x-epic.2 is why it exists:
+	// it hangs off x-epic.1's Waiters, three levels down, and a walk over Roots
+	// plus their direct Children never reaches it — so clicking it in the agenda
+	// would open nothing.
+	if len(all) != 5 {
+		t.Fatalf("all = %d beads, want 5 (every open bead)", len(all))
+	}
+	if all[2].ID != "x-epic.2" {
+		t.Fatalf("all[2] = %s, want x-epic.2 (export order)", all[2].ID)
+	}
+}
+
+func TestBeadsAgenda_GroupsAndDates(t *testing.T) {
+	now := time.Now()
+	day := func(off int) string { return now.AddDate(0, 0, off).Format(time.RFC3339) }
+
+	// The two dateless lines are the regression guard: beads without a date must
+	// stay out of the agenda entirely, and an unreadable date must not drop the
+	// bead from the page.
+	fx := `{"_type":"issue","id":"a-over","title":"Late","status":"open","due_at":"` + day(-2) + `"}
+{"_type":"issue","id":"a-today","title":"Now","status":"open","due_at":"` + day(0) + `"}
+{"_type":"issue","id":"a-soon","title":"Soon","status":"open","due_at":"` + day(3) + `"}
+{"_type":"issue","id":"a-none","title":"Undated","status":"open"}
+{"_type":"issue","id":"a-bad","title":"Broken date","status":"open","due_at":"not-a-date"}
+`
+	_, _, all, open, _, _, err := parseBeads(strings.NewReader(fx), "o/r")
+	if err != nil {
+		t.Fatalf("parseBeads: %v", err)
+	}
+	if open != 5 {
+		t.Fatalf("open = %d, want 5 — an unreadable date must not drop the bead", open)
+	}
+
+	b := &Beads{state: []*BeadsRepo{{Name: "o/r", All: all}}}
+	ag := b.Agenda()
+	if ag == nil {
+		t.Fatal("Agenda() = nil, want three dated beads")
+	}
+	if ag.Total != 3 {
+		t.Fatalf("Total = %d, want 3 (undated and unparseable excluded)", ag.Total)
+	}
+	if len(ag.Groups) != 2 {
+		t.Fatalf("groups = %d, want overdue + upcoming", len(ag.Groups))
+	}
+	if !ag.Groups[0].Overdue || len(ag.Groups[0].Items) != 1 || ag.Groups[0].Items[0].ID != "a-over" {
+		t.Fatalf("overdue group = %+v", ag.Groups[0])
+	}
+	// The count is the template's job, in the same right-hand column Ready and
+	// Baum use — not baked into the title.
+	if ag.Groups[0].Title != "Überfällig" {
+		t.Fatalf("overdue title = %q", ag.Groups[0].Title)
+	}
+	// Today belongs to upcoming, not overdue — the same cut the planner makes.
+	if ag.Groups[1].Title != "Anstehend" || len(ag.Groups[1].Items) != 2 ||
+		ag.Groups[1].Items[0].ID != "a-today" || ag.Groups[1].Items[1].ID != "a-soon" {
+		t.Fatalf("upcoming group = %+v", ag.Groups[1])
+	}
+
+	// A repo whose beads carry no date produces no agenda at all, so the page
+	// renders exactly as it did before the section existed.
+	bare := &Beads{state: []*BeadsRepo{{Name: "o/r", All: []*Bead{{ID: "x-plain"}}}}}
+	if bare.Agenda() != nil {
+		t.Fatal("Agenda() must be nil when nothing is dated")
+	}
 }
 
 func TestParseBeads_GHURLOnlyForGhRefs(t *testing.T) {
-	roots, _, _, _, _, err := parseBeads(strings.NewReader(beadsFixture), "o/r")
+	roots, _, _, _, _, _, err := parseBeads(strings.NewReader(beadsFixture), "o/r")
 	if err != nil {
 		t.Fatalf("parseBeads: %v", err)
 	}
