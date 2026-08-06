@@ -4,14 +4,16 @@
       hx-get="/htmx/actions" hx-target="#actions" hx-swap="innerHTML"
       hx-trigger="change" hx-push-url="true">
 
-  <select class="in" name="repo" aria-label="Repository">
+  {{/* .set marks a select that is narrowing the list — same vocabulary as the
+       issues page, so "which filter is on" is never a menu you have to open. */}}
+  <select class="in{{ if .Filter.Repo }} set{{ end }}" name="repo" aria-label="Repository">
     <option value="">alle Repos</option>
     {{ $sel := .Filter.Repo }}
     {{ range .RepoNames }}<option value="{{ . }}" {{ if eq . $sel }}selected{{ end }}>{{ . }}</option>{{ end }}
   </select>
 
   {{ if gt (len .Tokens) 1 }}
-  <select class="in" name="token" aria-label="Account">
+  <select class="in{{ if .Filter.Token }} set{{ end }}" name="token" aria-label="Account">
     <option value="">alle Accounts</option>
     {{ $tsel := .Filter.Token }}
     {{ range .Tokens }}<option value="{{ .Name }}" {{ if eq .Name $tsel }}selected{{ end }}>{{ .Label }}</option>{{ end }}
@@ -60,9 +62,19 @@
 
 {{ if not .Repos }}
   {{ if .Filter.Any }}
-    {{ template "empty" "Keine Runs für diesen Filter." }}
+  <div class="empty">
+    <b>kein Run passt auf diesen Filter</b>
+    <p>Repo-Karten ohne passenden Run fallen ganz heraus — „Fehler" zeigt deshalb
+      genau die Repos, die Aufmerksamkeit brauchen, und sonst nichts.</p>
+    <p>Zurück auf <b>alle</b> im Status-Schalter oben.</p>
+  </div>
   {{ else }}
-    {{ template "empty" "Noch keine Workflow-Runs — der erste Refresh läuft." }}
+  <div class="empty">
+    <b>noch keine Workflow-Runs</b>
+    <p>Der erste Abruf läuft; die Liste holt sich alle 30&nbsp;s selbst nach.</p>
+    <p>Bleibt sie leer, hat keines der Repos aus <code>repos:</code> einen
+      Workflow-Lauf in der Historie.</p>
+  </div>
   {{ end }}
 {{ else }}
 <div class="repos">
@@ -72,7 +84,11 @@
     <header class="proj-h">
       <span class="ico o-{{ with .LastRun }}{{ .Outcome }}{{ else }}unknown{{ end }}"></span>
       <a class="pname" href="https://github.com/{{ .Repo }}/actions" target="_blank" rel="noopener">{{ .Repo }}</a>
-      <span class="proj-rate{{ if ge .SuccessRate 90 }} good{{ else if ge .SuccessRate 0 }} bad{{ end }}">{{ pctText .SuccessRate }}</span>
+      {{/* -1 means nothing conclusive ran, so pctText prints an en dash. Without
+           the unknown class that dash inherits the weight of a real rate and
+           reads as a bad one. */}}
+      <span class="proj-rate{{ if ge .SuccessRate 90 }} good{{ else if ge .SuccessRate 0 }} bad{{ else }} unknown{{ end }}"
+            title="{{ if ge .SuccessRate 0 }}Erfolgsrate der geladenen Runs{{ else }}keine abgeschlossenen Runs{{ end }}">{{ pctText .SuccessRate }}</span>
     </header>
 
     <div class="spark" aria-hidden="true">
@@ -85,7 +101,7 @@
 
     <div class="list">
       {{ range .Runs }}
-      <div class="run">
+      <div class="run{{ if .Quiet }} quiet{{ end }}">
         <span class="dot o-{{ .Outcome }}" title="{{ .Outcome }}"></span>
         <div class="run-main">
           <a class="run-t" href="{{ .HTMLURL }}" target="_blank" rel="noopener">{{ truncate 64 .Title }}</a>
@@ -103,8 +119,8 @@
           {{ end }}
         </div>
         <div class="run-meta">
-          <span class="d">{{ dur .Duration }}</span>
-          <span class="ago" title="{{ .CreatedAt.Format "2006-01-02 15:04" }}">{{ relTime .CreatedAt }}</span>
+          <span class="d" title="Laufzeit">{{ dur .Duration }}</span>
+          <span class="ago" title="gestartet {{ .CreatedAt.Format "2006-01-02 15:04" }}">{{ relTime .CreatedAt }}</span>
         </div>
       </div>
       {{ end }}

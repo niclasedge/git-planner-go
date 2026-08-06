@@ -9,9 +9,6 @@ import (
 	"github.com/niclasedge/git-planner-go/internal/gh"
 )
 
-// staleAfter is when an untouched issue starts showing up as stale.
-const staleAfter = 30 * 24 * time.Hour
-
 type issueFilter struct {
 	Repo     string
 	Token    string
@@ -114,7 +111,7 @@ func (s *Server) buildIssueData(f issueFilter) *issueData {
 		if len(is.Assignees) > 0 {
 			d.Assigned++
 		}
-		if is.Age() > staleAfter {
+		if is.Stale() {
 			d.Stale++
 		}
 	}

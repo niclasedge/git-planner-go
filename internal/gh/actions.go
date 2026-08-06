@@ -60,6 +60,18 @@ func (j Job) Outcome() string { return outcome(j.Status, j.Conclusion) }
 
 func (s Step) Outcome() string { return outcome(s.Status, s.Conclusion) }
 
+// Quiet marks a run that never did any work — skipped by a path filter,
+// cancelled, or neutral. It lives next to Outcome so the vocabulary stays in one
+// place. A repo whose recent history is mostly skips otherwise reads as busy,
+// and the one run that actually built something has to be hunted for.
+func (r Run) Quiet() bool {
+	switch r.Outcome() {
+	case "skipped", "cancelled", "neutral", "stale":
+		return true
+	}
+	return false
+}
+
 func outcome(status, conclusion string) string {
 	switch status {
 	case "completed":

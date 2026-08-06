@@ -74,6 +74,14 @@ func (i Issue) IsPR() bool { return i.PullRequest != nil }
 // Age returns how long ago the issue was last touched.
 func (i Issue) Age() time.Duration { return time.Since(i.UpdatedAt) }
 
+// StaleAfter is when an untouched issue starts reading as stale. It lives here,
+// next to Age, so the row and the "still" stat cannot drift apart.
+const StaleAfter = 30 * 24 * time.Hour
+
+// Stale is the row-level form of the same threshold the issues page counts with,
+// so a template can mark the date without knowing the number.
+func (i Issue) Stale() bool { return i.Age() > StaleAfter }
+
 // IssueQuery describes what to fetch per repo.
 type IssueQuery struct {
 	State   string // open | closed | all

@@ -8,27 +8,30 @@
   <input class="in search" type="search" name="q" value="{{ .Filter.Query }}"
          placeholder="Titel, Repo oder #Nummer" autocomplete="off">
 
-  <select class="in" name="repo" aria-label="Repository">
+  {{/* .set marks a select that is actually narrowing the list — with four of
+       them side by side, "which one is filtering" is otherwise a menu you have
+       to open. */}}
+  <select class="in{{ if .Filter.Repo }} set{{ end }}" name="repo" aria-label="Repository">
     <option value="">alle Repos</option>
     {{ $sel := .Filter.Repo }}
     {{ range .RepoNames }}<option value="{{ . }}" {{ if eq . $sel }}selected{{ end }}>{{ . }}</option>{{ end }}
   </select>
 
   {{ if gt (len .Tokens) 1 }}
-  <select class="in" name="token" aria-label="Account">
+  <select class="in{{ if .Filter.Token }} set{{ end }}" name="token" aria-label="Account">
     <option value="">alle Accounts</option>
     {{ $tsel := .Filter.Token }}
     {{ range .Tokens }}<option value="{{ .Name }}" {{ if eq .Name $tsel }}selected{{ end }}>{{ .Label }}</option>{{ end }}
   </select>
   {{ end }}
 
-  <select class="in" name="label" aria-label="Label">
+  <select class="in{{ if .Filter.Label }} set{{ end }}" name="label" aria-label="Label">
     <option value="">alle Labels</option>
     {{ $lsel := .Filter.Label }}
     {{ range .Labels }}<option value="{{ . }}" {{ if eq . $lsel }}selected{{ end }}>{{ . }}</option>{{ end }}
   </select>
 
-  <select class="in" name="assignee" aria-label="Assignee">
+  <select class="in{{ if .Filter.Assignee }} set{{ end }}" name="assignee" aria-label="Assignee">
     <option value="">Assignee: alle</option>
     <option value="none" {{ if eq .Filter.Assignee "none" }}selected{{ end }}>ohne Assignee</option>
   </select>
@@ -63,9 +66,15 @@
 
 {{ if not .Issues }}
   {{ if .Filter.Any }}
-    {{ template "empty" "Keine Issues für diesen Filter." }}
+  <div class="empty">
+    <b>kein Issue passt auf diesen Filter</b>
+    <p>{{ .Total }} Issues sind geladen. Die aktiven Filter sind oben blau markiert — einen davon auf „alle" zurücksetzen.</p>
+  </div>
   {{ else }}
-    {{ template "empty" "Noch keine Daten — der erste Refresh läuft." }}
+  <div class="empty">
+    <b>noch keine Daten</b>
+    <p>Der erste Abruf läuft; die Liste lädt sich alle 60&nbsp;s selbst nach.</p>
+  </div>
   {{ end }}
 {{ else }}
 <div class="card">
@@ -83,10 +92,12 @@
       </div>
       <div class="row-meta">
         {{ range .Assignees }}<span class="who" title="{{ .Login }}">{{ initials .Login }}</span>{{ end }}
-        {{ if .Comments }}<span class="num" title="Kommentare">{{ .Comments }}💬</span>{{ end }}
+        {{ if .Comments }}<span class="cmt-n" title="{{ .Comments }} Kommentare">{{ render "ico-comment" . }}{{ .Comments }}</span>{{ end }}
         <span class="repo">{{ .Repo }}</span>
         <span class="num">#{{ .Number }}</span>
-        <span class="ago" title="{{ .UpdatedAt.Format "2006-01-02 15:04" }}">{{ relTime .UpdatedAt }}</span>
+        {{/* The one date worth reading is the one that has stopped moving. */}}
+        <span class="ago{{ if .Stale }} stale{{ end }}"
+              title="{{ .UpdatedAt.Format "2006-01-02 15:04" }}{{ if .Stale }} — über 30 Tage still{{ end }}">{{ relTime .UpdatedAt }}</span>
       </div>
     </div>
     {{ end }}

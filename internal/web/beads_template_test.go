@@ -54,7 +54,7 @@ func TestRenderWidgetBeads(t *testing.T) {
 		"https://github.com/o/r/issues/66", // migrated issues link back
 		"Blocked child",
 		"wartet auf x-1.1", // the blocker is named, not just a colour
-		"o-queued",         // and colours the dot as waiting
+		"o-blocked",        // and the dot is a hollow amber ring, not a filled grey one
 		"2 offen",
 		"keine Beads-DB", // a listed repo without an export stays visible
 		"wayfinder:map",
@@ -62,8 +62,8 @@ func TestRenderWidgetBeads(t *testing.T) {
 		"bd-detail",
 		"o/r · x-1", // detail head names repo and bead
 		"Der Plan.", // description lands in the detail pane
-		"2/1/1",     // repo trio: offen / ready / erledigt
-		"✓ Ready",   // the ready queue sits above the tree
+		"1 ready",   // the rail leads with what is actionable, not with a trio
+		"ohne Blocker, sofort machbar", // and the ready head says why it is first
 		"Do it now",
 		"Baum",                 // and the full tree follows under its own head
 		"Comes after the epic", // a waiter nests under its blocker

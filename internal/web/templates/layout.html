@@ -32,10 +32,10 @@ function toggleTheme() {
     {{ end }}
   </nav>
   <a class="nav-i ghost" href="/api/status" target="_blank" rel="noopener">status</a>
-  {{/* Both glyphs are rendered and CSS picks one: the server cannot know the
+  {{/* Both icons are rendered and CSS picks one: the server cannot know the
        theme, and letting JS set the label would show the wrong one until it runs. */}}
   <button class="icon-btn" onclick="toggleTheme()" title="Theme wechseln" aria-label="Theme wechseln"
-    ><span class="t-dark">🌙</span><span class="t-light">☀️</span></button>
+    ><span class="t-dark">{{ render "ico-moon" . }}</span><span class="t-light">{{ render "ico-sun" . }}</span></button>
 </header>
 
 {{/* A full-height page brings its own <main>: the panes are grid children of
@@ -72,3 +72,40 @@ function toggleTheme() {
   <p>{{ . }}</p>
 </div>
 {{ end }}
+
+
+{{/* Icons ------------------------------------------------------------------
+     Six drawn marks, and that is the whole set — one 16-viewBox, one 1.4
+     stroke, currentColor. They replace the emoji that stood here (💬 🌙 ☀️ 🎯 🔀 🏁),
+     which rendered in the OS colour font: full-colour, a different metric per
+     platform, and impossible to tint with the cell they sit in — a 🔀 inside the
+     purple PR badge of the planner rail stayed a blue Apple tile, and the badge's
+     own colour meant nothing next to it.
+
+     Four emoji were dropped rather than redrawn: 📅 next to the word "Agenda",
+     💬 next to "Kommentare", 🔀 next to "Pull Requests" and ✎ next to
+     "bearbeiten" — there the glyph only repeated the label. An icon earns its
+     place where it carries what the text cannot: the target mark next to a bare
+     number, the comment mark next to a bare count, the merge mark next to a bare
+     PR count, the flag next to a milestone title that never says "Milestone".
+
+     The monochrome text arrows (↗ ↻ ← ›) are typography, not icons, and stay. */}}
+
+{{ define "ico-comment" }}<svg class="ico-s" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M13.5 9.2a1.8 1.8 0 0 1-1.8 1.8H7.3L4.2 13.4v-2.4h-.4A1.8 1.8 0 0 1 2 9.2V4.3a1.8 1.8 0 0 1 1.8-1.8h7.9A1.8 1.8 0 0 1 13.5 4.3z"/></svg>{{ end }}
+
+{{/* A ring with a filled centre. Three concentric rings is the conventional
+     target, but the innermost one closes up to mud at 13px — two marks read. */}}
+{{ define "ico-target" }}<svg class="ico-s" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="5.7"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg>{{ end }}
+
+{{/* Merge mark: two branch points on the left line, one on the right that curves
+     into it. The arc has to land *on* the left line (H4.6) — ending short of it
+     leaves a 1px gap that at 13px reads as a broken glyph, not as two branches. */}}
+{{ define "ico-pr" }}<svg class="ico-s" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="4.6" cy="3.7" r="1.5" fill="currentColor" stroke="none"/><circle cx="4.6" cy="12.3" r="1.5" fill="currentColor" stroke="none"/><path d="M4.6 5.7v4.9"/><circle cx="11.4" cy="3.7" r="1.5" fill="currentColor" stroke="none"/><path d="M11.4 5.7v2.3a2.4 2.4 0 0 1-2.4 2.4H4.6"/></svg>{{ end }}
+
+{{/* Swallowtail pennant on a pole. The notch is what separates it from a plain
+     rectangle at this size — a straight-edged flag reads as a label chip. */}}
+{{ define "ico-flag" }}<svg class="ico-s" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.4 2.6v10.8"/><path d="M4.4 3.7h7.2l-1.7 2.6 1.7 2.6H4.4"/></svg>{{ end }}
+
+{{ define "ico-moon" }}<svg class="ico-s" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M13.2 10.1A5.6 5.6 0 0 1 6 2.8a5.7 5.7 0 1 0 7.2 7.3z"/></svg>{{ end }}
+
+{{ define "ico-sun" }}<svg class="ico-s" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="3.1"/><path d="M8 1.4v1.5M8 13.1v1.5M1.4 8h1.5M13.1 8h1.5M3.3 3.3l1.1 1.1M11.6 11.6l1.1 1.1M12.7 3.3l-1.1 1.1M4.4 11.6l-1.1 1.1"/></svg>{{ end }}

@@ -18,15 +18,24 @@
 
   {{ if .Agenda }}
   <div class="agenda-wrap">
-    <div class="pane-header">📅 Agenda <span class="ag-kpi" title="offene Issues mit Target-Date">🎯 {{ .AgendaN }}</span></div>
+    <div class="pane-header">Agenda <span class="ag-kpi" title="offene Issues mit Target-Date">{{ render "ico-target" . }} {{ .AgendaN }}</span></div>
     <div class="agenda-list">
-      {{ range .Agenda }}
+      {{ range $g := .Agenda }}
       <div class="agenda-head{{ if .Overdue }} ov{{ end }}">{{ .Title }}</div>
       {{ range .Items }}
       <a class="agenda-item" href="{{ .URL }}" title="{{ .Repo }}#{{ .Number }}">
-        <span class="due-badge {{ if .Red }}due-red{{ else }}due-blue{{ end }}">{{ .Badge }}</span>
         <span class="ag-title">{{ .Title }}</span>
-        <span class="ag-repo">{{ .Short }}</span>
+        <span class="ag-meta">
+          {{/* No badge inside the overdue group: dueBadge returns the constant
+               "über" for every past date, so under a head that already reads
+               "ÜBERFÄLLIG (3)" it repeated itself once per row and took the width
+               the title needed. The ranking is not lost — the list is sorted by
+               date, so the top row is the most overdue. "Anstehend" keeps it:
+               there the badge is the weekday or the date, which the head cannot
+               say. */}}
+          {{ if not $g.Overdue }}<span class="due-badge {{ if .Red }}due-red{{ else }}due-blue{{ end }}">{{ .Badge }}</span>{{ end }}
+          <span class="ag-repo">{{ .Short }}</span>
+        </span>
       </a>
       {{ end }}
       {{ end }}
@@ -50,8 +59,8 @@
           {{ else }}
           <span class="count">0</span>
           {{ end }}
-          {{ if .Due }}<span class="ri-td" title="Issues mit Target-Date">🎯 {{ .Due }}</span>{{ end }}
-          {{ if .PRs }}<span class="ri-pr" title="offene Pull Requests">🔀 {{ .PRs }}</span>{{ end }}
+          {{ if .Due }}<span class="ri-td" title="Issues mit Target-Date">{{ render "ico-target" . }} {{ .Due }}</span>{{ end }}
+          {{ if .PRs }}<span class="ri-pr" title="offene Pull Requests">{{ render "ico-pr" . }} {{ .PRs }}</span>{{ end }}
         </div>
         {{ if or .Open .Closed }}
         <div class="seg-bar">
@@ -153,12 +162,12 @@ function plannerBack(e) { e.preventDefault(); document.getElementById('paneDetai
 
   <div class="issue-list" id="issueList">
     {{ if .PRs }}
-    <div class="sec-head pr">🔀 Pull Requests <span class="sec-n">{{ len .PRs }}</span></div>
+    <div class="sec-head pr">Pull Requests <span class="sec-n">{{ len .PRs }}</span></div>
     {{ range .PRs }}{{ template "planner-row" (topRow $ .) }}{{ end }}
     {{ end }}
 
     {{ range .Sections }}
-    <div class="sec-head{{ if eq .Title "Wayfinder" }} wf{{ end }}">{{ with .Icon }}{{ . }} {{ end }}{{ .Title }} <span class="sec-n">{{ len .Rows }}</span></div>
+    <div class="sec-head{{ if eq .Title "Wayfinder" }} wf{{ end }}">{{ .Title }} <span class="sec-n">{{ len .Rows }}</span></div>
     {{ range .Rows }}{{ template "planner-row" (row $ .) }}{{ end }}
     {{ end }}
 
@@ -205,7 +214,7 @@ function plannerBack(e) { e.preventDefault(); document.getElementById('paneDetai
         <span class="ir-bar"><span style="width:{{ subPct .Sub.Completed .Sub.Total }}%"></span></span>
       </span>{{ end }}
       {{ if $due.Badge }}<span class="due-badge {{ if $due.Red }}due-red{{ else }}due-blue{{ end }}">{{ $due.Badge }}</span>{{ end }}
-      {{ if .Comments }}<span class="ir-cmt">{{ .Comments }}💬</span>{{ end }}
+      {{ if .Comments }}<span class="ir-cmt" title="{{ .Comments }} Kommentare">{{ render "ico-comment" . }}{{ .Comments }}</span>{{ end }}
       <span class="ir-time" title="{{ .UpdatedAt.Format "2006-01-02 15:04" }}">{{ relTime .UpdatedAt }}</span>
     </span>
   </div>
@@ -224,16 +233,16 @@ function plannerBack(e) { e.preventDefault(); document.getElementById('paneDetai
     <span class="num">{{ .Repo }}#{{ .Number }}</span>
     {{ $due := $d.DueBadge . }}
     {{ if $due.Badge }}
-    <span class="due-badge {{ if $due.Red }}due-red{{ else }}due-blue{{ end }}">🎯 {{ .Due.Format "2.1.2006" }}</span>
+    <span class="due-badge {{ if $due.Red }}due-red{{ else }}due-blue{{ end }}">{{ render "ico-target" . }} {{ .Due.Format "2.1.2006" }}</span>
     {{ end }}
-    {{ if .Milestone }}<span title="Milestone">🏁 {{ .Milestone.Title }}</span>{{ end }}
+    {{ if .Milestone }}<span class="ms" title="Milestone">{{ render "ico-flag" . }} {{ .Milestone.Title }}</span>{{ end }}
     <span>{{ .User.Login }}</span>
     <span title="{{ .CreatedAt.Format "2006-01-02 15:04" }}">geöffnet {{ relTime .CreatedAt }}</span>
     <span title="{{ .UpdatedAt.Format "2006-01-02 15:04" }}">aktualisiert {{ relTime .UpdatedAt }}</span>
     {{ range .Assignees }}<span class="who" title="{{ .Login }}">{{ initials .Login }}</span>{{ end }}
     {{ if not .IsPR }}
     <button class="btn tiny" type="button" title="Titel, Status, Datum, Tags, Body ändern"
-            hx-get="{{ $d.EditURL . }}" hx-target="#detailContent" hx-swap="innerHTML">✎ bearbeiten</button>
+            hx-get="{{ $d.EditURL . }}" hx-target="#detailContent" hx-swap="innerHTML">bearbeiten</button>
     {{ end }}
     <a class="btn tiny" href="{{ .HTMLURL }}" target="_blank" rel="noopener">GitHub ↗</a>
   </div>
@@ -254,7 +263,19 @@ function plannerBack(e) { e.preventDefault(); document.getElementById('paneDetai
 </article>
 {{ end }}
 {{ else }}
-<div class="detail">{{ template "empty" "Kein Issue ausgewählt." }}</div>
+{{/* The same teaching state the beads pane got: this placeholder is the only
+     thing on screen that can explain the rail's numbers, and it is guaranteed to
+     be read — it is what every first load shows. */}}
+<div class="detail">
+  <div class="empty plain">
+    <b>kein Issue ausgewählt</b>
+    <p>In der Mitte eine Zeile wählen — <em>Wayfinder</em>-Maps stehen zuerst, ihre Unter-Tasks eingerückt darunter.</p>
+    {{/* Every space inside the triple is non-breaking, the one in "in Arbeit"
+         included: with a normal space there the emphasis wrapped as "offen / in" +
+         "Arbeit / geschlossen", which reads as two labels instead of one legend. */}}
+    <p>Die Zahlen am Repo links sind <b>offen&nbsp;/&nbsp;in&nbsp;Arbeit&nbsp;/&nbsp;geschlossen</b>; der Balken darunter ist dasselbe als Anteil.</p>
+  </div>
+</div>
 {{ end }}
 {{ end }}
 
@@ -351,7 +372,7 @@ function plannerBack(e) { e.preventDefault(); document.getElementById('paneDetai
 
 {{ define "planner-comments" }}
 <div class="cmts" id="cmts">
-  <div class="cmt-head">💬 Kommentare {{ if .Comments }}<span class="ph-n">{{ len .Comments }}</span>{{ end }}</div>
+  <div class="cmt-head">Kommentare {{ if .Comments }}<span class="ph-n">{{ len .Comments }}</span>{{ end }}</div>
   {{ with .Err }}<div class="err">{{ . }}</div>{{ end }}
   {{ with .Note }}<div class="note">{{ . }}</div>{{ end }}
 

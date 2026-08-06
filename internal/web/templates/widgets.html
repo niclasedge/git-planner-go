@@ -211,13 +211,29 @@
       {{ range $secs }}
       <a class="repo-item bd-repo{{ if eq .Name $first }} active{{ end }}{{ if .Missing }} missing{{ end }}"
          href="#" data-repo="{{ .Name }}" data-open="{{ .Open }}" data-ready="{{ .Ready }}" data-closed="{{ .Closed }}"
-         title="{{ .Name }}{{ if .Missing }} — keine Beads-DB{{ end }}">
+         title="{{ .Name }}{{ if .Missing }} — keine Beads-DB{{ else }} — {{ .Ready }} ready, {{ .Open }} offen, {{ .Closed }} erledigt{{ end }}">
         <div class="ri-top">
-          <span class="name">{{ .Name }}</span>
+          {{/* .Short, not .Name: the owner prefix is the same on every row of a
+               personal account, so in a 200px rail "niclasedge/IaC-Stack" and
+               "niclasedge/affiliate-hub-tools" both ellipsised to "nicl…" — the
+               rail named nothing. The full path stays in the row's title and in
+               the pane header. */}}
+          <span class="name">{{ .Short }}</span>
+        </div>
+        {{/* Second line, not the same one: at 200px the name shared its row with
+             the chip and the open count and was left ~55px of it, so both repos
+             ellipsised to four characters no matter how short the name got.
+             A rail item answers two questions, and they get a line each — what it
+             is, then how much is in it. */}}
+        <div class="ri-nums">
           {{ if .Missing }}
           <span class="count">—</span>
           {{ else }}
-          <span class="ri-trio" title="offen / ready / erledigt">{{ .Open }}/{{ .Ready }}/{{ .Closed }}</span>
+          {{/* Ready first and in words: it is the number that answers "gibt es
+               hier was zu tun". Open follows as context, closed only in the
+               tooltip — a done count changes nothing about the next move. */}}
+          {{ if .Ready }}<span class="ri-ready">{{ .Ready }} ready</span>{{ end }}
+          <span class="ri-open">{{ .Open }} offen</span>
           {{ end }}
         </div>
       </a>
@@ -226,6 +242,14 @@
   </aside>
   <div class="resizer" data-bd-resize="sidebar"></div>
   <main class="bd-pane bd-issues">
+    {{/* The phone's replacement for the rail the 760px step hides. Same .bd-repo
+         class, so the existing click handler drives it unchanged. */}}
+    <div class="bd-tabs">
+      {{ range $secs }}
+      <a class="bd-tab bd-repo{{ if eq .Name $first }} active{{ end }}{{ if .Missing }} missing{{ end }}"
+         href="#" data-repo="{{ .Name }}" data-open="{{ .Open }}" title="{{ .Name }}">{{ .Short }}{{ if .Ready }} <span class="n">{{ .Ready }}</span>{{ end }}</a>
+      {{ end }}
+    </div>
     <div class="pane-header">
       <span class="bd-title">{{ $first }}</span>
       <span class="ph-n bd-count">{{ if $secs }}{{ (index $secs 0).Open }} offen{{ end }}</span>
@@ -233,12 +257,28 @@
     {{ range $secs }}
     <div class="bd-list{{ if eq .Name $first }} active{{ end }}" data-repo="{{ .Name }}">
       {{ if .Missing }}
-      <div class="empty"><p>keine Beads-DB (.beads/issues.jsonl fehlt)</p></div>
+      <div class="empty plain">
+        <b>keine Beads-DB</b>
+        <p>Dieses Repo trägt kein <code>.beads/issues.jsonl</code>. Das Widget liest den committeten Export über die GitHub-API — die Dolt-DB selbst bleibt tabu.</p>
+        <p><code>bd init</code>, dann den Auto-Export committen.</p>
+      </div>
       {{ else }}
       {{ with .Err }}<div class="banner">{{ . }}</div>{{ end }}
       {{ with .ReadyList }}
-      <div class="sec-head bd-sec-ready">✓ Ready <span class="sec-n" title="offen, unblocked, ohne offene Kinder">{{ len . }}</span></div>
+      {{/* Subtitle before the count, because .sec-head pushes .sec-n right with
+           margin-left:auto and everything after it rides along: the gloss ended up
+           at the far edge of a 1100px pane, ~800px from the word "Ready" it
+           explains. Reordered here rather than unsetting the margin — the count
+           belongs in the right-hand column the pane header's "21 offen" starts, and
+           17-of-21 is then readable as a column. */}}
+      <div class="sec-head bd-sec-ready">Ready <span class="sec-sub">ohne Blocker, sofort machbar</span><span class="sec-n" title="offen, unblocked, ohne offene Kinder">{{ len . }}</span></div>
       {{ range . }}{{ render "bead-row" . }}{{ end }}
+      {{ else }}
+      <div class="sec-head bd-sec-ready">Ready <span class="sec-n">0</span></div>
+      <div class="empty plain">
+        <b>nichts sofort machbar</b>
+        <p>Jeder offene Bead wartet auf einen anderen. Der Baum unten zeigt, welcher zuerst fallen muss — die eingerückten Zeilen warten auf die Zeile darüber.</p>
+      </div>
       {{ end }}
       <div class="sec-head bd-sec-tree">Baum <span class="sec-n">{{ .Open }} offen</span></div>
       {{ range .Roots }}{{ render "bead-row" . }}{{ end }}
@@ -251,7 +291,11 @@
     <a class="back-btn" href="#" data-bd-back>&larr; zurück</a>
     <div class="bd-details">
       <article class="detail" data-bead="">
-        <div class="empty"><p>Bead auswählen.</p></div>
+        <div class="empty plain">
+          <b>kein Bead ausgewählt</b>
+          <p>Links eine Zeile wählen — <em>Ready</em> zuerst, das ist die Liste ohne Blocker.</p>
+          <p>Eingerückte Zeilen sind Unter-Aufgaben oder warten auf die Zeile darüber; der amberne Ring am Punkt heißt „blockiert".</p>
+        </div>
       </article>
       {{ range $secs }}{{ range .Roots }}{{ render "bead-detail" . }}{{ range .Children }}{{ render "bead-detail" . }}{{ end }}{{ end }}{{ end }}
     </div>
@@ -345,7 +389,10 @@
   })();
   </script>
   {{ else }}
-  <div class="empty"><p>keine Repos konfiguriert</p></div>
+  <div class="empty plain">
+    <b>keine Repos konfiguriert</b>
+    <p>Das Widget liest die Liste aus <code>repos:</code> unter seinem <code>type: beads</code> in <code>config.yaml</code>.</p>
+  </div>
   {{ end }}
 </div>
 {{ end }}
@@ -365,8 +412,15 @@
     </span>
   </div>
   <div class="row-meta">
-    {{ range .Labels }}<span class="label" style="{{ labelStyle "6e7681" }}">{{ . }}</span>{{ end }}
-    <span class="num">{{ .ID }} · P{{ .Priority }}</span>
+    {{/* .soft, not labelStyle: a filled chip is a colour-carrying device, and a bd
+         label has no colour to carry — the hex here was hardcoded grey. Filled it
+         was the darkest thing on the light theme after the text itself, twice per
+         row on the rows that carry `wayfinder:map` + `wayfinder:task`, i.e.
+         loudest exactly where it says least. GitHub labels keep labelStyle: there
+         the colour is data the repo chose. */}}
+    {{ range .Labels }}<span class="label soft">{{ . }}</span>{{ end }}
+    <span class="num">{{ .ID }}</span>
+    <span class="pri p{{ .Priority }}" title="Priorität {{ .Priority }}">P{{ .Priority }}</span>
   </div>
 </div>
 {{ range .Children }}<div class="bd-nest">{{ render "bead-row" . }}</div>{{ end }}
@@ -385,13 +439,15 @@
   </div>
   <h2>{{ .Title }}</h2>
   <div class="meta-row">
-    <span class="num">{{ .Type }}{{ if .Priority }} · P{{ .Priority }}{{ end }}</span>
-    {{ range .Labels }}<span class="label" style="{{ labelStyle "6e7681" }}">{{ . }}</span>{{ end }}
+    <span class="num">{{ .Type }}</span>
+    <span class="pri p{{ .Priority }}" title="Priorität {{ .Priority }}">P{{ .Priority }}</span>
+    {{/* .soft for the same reason as in bead-row above. */}}
+    {{ range .Labels }}<span class="label soft">{{ . }}</span>{{ end }}
   </div>
   {{ if .Description }}
   <div class="body">{{ markdown .Description }}</div>
   {{ else }}
-  <div class="empty"><p>keine Beschreibung</p></div>
+  <div class="empty plain"><p>keine Beschreibung im Export</p><p>Der Text kommt aus <code>.beads/issues.jsonl</code> — <code>bd update {{ .ID }}</code> schreibt ihn.</p></div>
   {{ end }}
   {{ if .Children }}
   <div class="cmt-head">Unter-Aufgaben <span class="ph-n">{{ len .Children }}</span></div>

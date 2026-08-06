@@ -92,12 +92,17 @@ func (b *Bead) Blocked() bool { return len(b.BlockedBy) > 0 }
 
 // Dot maps the bead onto the status vocabulary the other pages use, so the
 // colours mean the same thing everywhere.
+//
+// Blocked is its own state, not "queued". Borrowing o-queued gave a waiting bead
+// a filled light dot, which next to an actionable bead's hollow ring read as
+// *more* finished — the opposite of the truth. o-blocked is a hollow amber ring:
+// hollow says "not done", amber says "waiting on something else".
 func (b *Bead) Dot() string {
 	switch {
 	case b.Status == "closed":
 		return "success"
 	case b.Blocked():
-		return "queued"
+		return "blocked"
 	case b.Status == "in_progress":
 		return "running"
 	default:
@@ -243,6 +248,15 @@ func (b *Beads) setErr(st *BeadsRepo, msg string) {
 
 // URL is the repo on GitHub, for the section heading.
 func (r *BeadsRepo) URL() string { return "https://github.com/" + r.Name }
+
+// Short drops the owner. The rail has room for "niclasedge/IaC-Stack"; the phone
+// tab strip does not, and the owner is the same for every repo listed anyway.
+func (r *BeadsRepo) Short() string {
+	if i := strings.LastIndex(r.Name, "/"); i >= 0 && i+1 < len(r.Name) {
+		return r.Name[i+1:]
+	}
+	return r.Name
+}
 
 // parseBeads turns the JSONL export into render-ready trees. Closed issues are
 // counted but not shown: the page answers "what is there to do", and beads'

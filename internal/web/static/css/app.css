@@ -130,6 +130,32 @@ body {
 a { color: inherit; text-decoration: none; }
 a:hover { color: var(--accent); }
 
+/* One focus ring for the whole app, and it was missing entirely until now — the
+   planner and the beads tree are keyboard-navigable lists whose selection was
+   invisible without a mouse. :focus-visible so a click stays quiet, and an
+   outline rather than a box-shadow because both pane grids are overflow:auto,
+   which would clip a shadow. Zero-specificity :where(), so a component can
+   still say something more specific. */
+:where(a, button, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Hover and selection only. Nothing here animates layout, and 130ms is under
+   the threshold where a list stops feeling direct. */
+.row, .run, .bd-row, .bd-tab, .repo-item, .issue-item, .agenda-item,
+.nav-i, .btn, .seg-i, .bm, .icon-btn, .label, .exp {
+  transition: background-color .13s ease, border-color .13s ease, color .13s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+  /* The pulse is decoration for a state the colour already carries, so it goes.
+     The spinner is not decoration — it *is* the loading state — so it stays. */
+  .o-running { animation: none; opacity: 0.8; }
+  .site-shot { transition: none; }
+}
+
 /* ---- chrome ------------------------------------------------------------- */
 
 .top {
@@ -157,18 +183,58 @@ a:hover { color: var(--accent); }
   font-weight: 500;
 }
 .nav-i:hover { background: var(--surface-2); color: var(--text); }
-.nav-i.on { background: var(--surface-2); color: var(--text); }
-.nav-i.ghost { font-size: 12px; }
+/* The page you are on must not look like the item under the cursor. Both were
+   `background: var(--surface-2); color: var(--text)`, so the nav never said
+   where you were. Hover stays a neutral fill; "on" is the accent, which is what
+   the accent is for on this surface: current selection. */
+.nav-i.on,
+.nav-i.on:hover { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+/* Not a nav item — a link out to the JSON. Same shape, deliberately lighter. */
+.nav-i.ghost { font-size: 12px; color: var(--faint); }
+.nav-i.ghost:hover { color: var(--muted); background: none; }
+
+/* On a 390px phone the five nav items plus brand, status and theme button
+   overflowed the single row: "Beads" was cut mid-word and "Monitoring" sat off
+   screen with nothing to indicate it existed — two of five pages unreachable,
+   and silently so. The nav takes its own full-width row instead. It still gets
+   overflow-x as the floor: one more page and it scrolls rather than clips.
+   Negative margins let that scroll area reach the screen edges, so a swipe does
+   not have to start inside the padding. */
+@media (max-width: 760px) {
+  .top { flex-wrap: wrap; height: auto; gap: 0 14px; padding: 7px 14px; }
+  /* .nav owned the margin-right that pushed status/theme right; on its own row
+     the brand has to take that job. */
+  .brand { margin-right: auto; }
+  .nav {
+    order: 5;
+    width: 100%;
+    margin: 5px -14px 0;
+    padding: 0 14px 1px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  /* 11px of side padding put the row at 375px against 362px of usable width, so
+     "Monitoring" was cut mid-word — the last page looked like a rendering fault
+     rather than something to scroll to. At 8px the five items measure ~345px and
+     the row simply fits; the overflow above stays as the floor for narrower
+     screens. */
+  .nav-i { flex: 0 0 auto; padding: 5px 8px; }
+}
 
 .icon-btn {
+  display: inline-flex;
+  align-items: center;
   background: none;
   border: 1px solid transparent;
   border-radius: var(--r-sm);
-  padding: 4px 7px;
-  font-size: 14px;
+  padding: 5px 7px;
+  color: var(--muted);
   line-height: 1;
   cursor: pointer;
 }
+.icon-btn:hover { color: var(--text); }
+.icon-btn .ico-s { width: 15px; height: 15px; }
 /* --border-2, not --border: in Catppuccin the hover fill and the default border
    are the same surface0, so a --border outline would vanish into its own fill. */
 .icon-btn:hover { background: var(--surface-2); border-color: var(--border-2); }
@@ -205,7 +271,69 @@ html[data-theme="light"] .t-light { display: inline; }
   max-width: 260px;
 }
 .in:focus { outline: none; border-color: var(--accent); }
+.in:hover { border-color: var(--border-2); }
 .in.search { flex: 1 1 220px; max-width: 340px; }
+
+/* Phone: each control sized itself to its widest option, so the filter bar came
+   out as four rows of different lengths — a ragged left-to-right staircase above
+   a list that is flush left. Two columns fixed the ragged edge but not the cost:
+   on a 844px screen the first issue row still started around 425px, half the
+   phone spent on chrome above the list the operator opened the page for.
+
+   One swipeable strip instead — the same "more than fits, swipe" vocabulary the
+   nav uses. It works here because the filters are peers: any one of them might
+   be the one wanted, so none is wronged by sitting a swipe to the right. The
+   stat strip below deliberately keeps wrapping for the opposite reason — its
+   cards are *ranked*, and on the issues page the highest-ranked one ("> 30 Tage
+   still") is last, so scrolling it would hide exactly the number that earned
+   its place.
+
+   The search field takes a fixed width rather than 100%: that is what
+   guarantees the row overflows at 390px, and a strip that happens to fit gives
+   no hint that it scrolls. */
+@media (max-width: 760px) {
+  .filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* Bleed to the screen edge, then push the content back to the gutter: the
+       strip stays left-aligned with the list, but the last control is cut by the
+       *screen* instead of ending 20px short of it inside a padded box. Ending
+       short reads as "that is all there is"; cut reads as "swipe". Without the
+       bleed the hint depends on whether the widths happen to land near the
+       gutter, which is not something a stylesheet should rely on. */
+    margin-inline: -22px;
+    padding-inline: 22px;
+    /* The scroller clips at its own edge, and .in:focus draws its ring as a
+       border — without this the focused control loses its bottom line. */
+    padding-bottom: 2px;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .filters .in.search { flex: 0 0 auto; width: 190px; max-width: none; }
+  .filters select.in { flex: 0 0 auto; min-width: 0; max-width: 150px; }
+  .filters .btn, .filters .seg { flex: 0 0 auto; }
+}
+
+/* Four of the six filter controls are selects, and unstyled they came out a
+   different height and a different grey than the search field next to them —
+   one form, two vocabularies. appearance:none takes the box; the popup stays
+   native, which is the affordance nobody should reinvent. The chevron is a
+   data URI per theme because a URI cannot read currentColor. */
+select.in {
+  appearance: none;
+  padding-right: 27px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23a6adc8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6.5 8 10.5l4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+  cursor: pointer;
+}
+html[data-theme="light"] select.in {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%235c5f77' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6.5 8 10.5l4-4'/%3E%3C/svg%3E");
+}
+/* A filter that is actually filtering is a state, so it gets the accent — the
+   only way to see at a glance which of the four is narrowing the list. */
+select.in.set { color: var(--accent); border-color: var(--accent-line); }
 
 .btn {
   background: var(--surface);
@@ -265,18 +393,27 @@ html[data-theme="light"] .t-light { display: inline; }
   margin-bottom: 16px;
 }
 
+/* Deliberately smaller than the hero-metric reflex. These five numbers are a
+   summary of the list below them, not the point of the page — every pixel they
+   take is a row the operator has to scroll for. */
+/* flex-grow:0, and that is the whole point of the comment above: with grow:1 the
+   four boxes shared the full 1880px, so a three-digit number sat in a 470px card
+   and the strip became exactly the hero row it was written not to be. Sized to
+   content they read as a caption on the list, and the wrap below still fills the
+   row on a phone. */
 .stat {
-  flex: 1 1 120px;
+  flex: 0 0 auto;
+  min-width: 104px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r);
-  padding: 12px 14px;
+  padding: 9px 13px;
 }
 .stat b {
   display: block;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
-  line-height: 1.1;
+  line-height: 1.15;
   letter-spacing: -0.02em;
 }
 .stat .lbl {
@@ -289,8 +426,9 @@ html[data-theme="light"] .t-light { display: inline; }
 }
 .stat.good b { color: var(--green); }
 .stat.bad b { color: var(--red); }
+.stat.bad { border-color: var(--red-line); }
 .stat.live b { color: var(--amber); }
-.stat.muted b { color: var(--muted); font-size: 20px; }
+.stat.muted b { color: var(--muted); font-size: 17px; }
 
 /* ---- cards ------------------------------------------------------------- */
 
@@ -348,6 +486,70 @@ html[data-theme="light"] .t-light { display: inline; }
 .row-meta .repo { font-family: var(--mono); font-size: 11px; }
 .row-meta .num { font-family: var(--mono); font-size: 11px; }
 .row-meta .ago { min-width: 52px; text-align: right; }
+/* An issue nobody has touched in 30 days is the one date worth reading, so it
+   is the one that carries colour — the same threshold the "still" stat counts. */
+.row-meta .ago.stale { color: var(--peach); }
+
+/* Phone: the meta column takes its own line.
+   The meta held its natural width and .row-main got the remainder — which at
+   390px was about two characters: "[.." and "P." were the entire visible title
+   on the issues list, while the repo path (identical on every row) and the issue
+   number were fully spelled out. The title is the only thing that tells two rows
+   apart, so it takes the whole first line and the meta drops below it, indented
+   past the dot so it reads as belonging to the title above. */
+@media (max-width: 760px) {
+  .row { flex-wrap: wrap; row-gap: 3px; }
+  .row-meta { flex: 1 1 100%; padding-left: 18px; }
+  .row-meta .ago { margin-left: auto; }
+}
+
+/* Priority is the one number on a bead row that changes what you do next, so it
+   is the one that gets colour. Without this every row weighed the same: a P0 bug
+   and a P4 idea were the same grey glyph in the same corner. */
+.pri {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--faint);
+}
+.pri.p0 { color: var(--red); background: var(--red-bg); }
+.pri.p1 { color: var(--peach); background: var(--peach-bg); }
+/* P2 is the default in bd, so its chip appeared on nearly every row: 15 grey
+   badges down the list, and the two that mean something had to compete with
+   them. A chip here means "this one is louder than the default", which P2 by
+   definition is not — so only P0/P1 keep it. P2 stays a step above P3/P4 in
+   colour alone. */
+.pri.p2 { color: var(--muted); }
+/* P3/P4 read as a footnote, not a badge. */
+.pri.p2, .pri.p3, .pri.p4 { padding-left: 0; padding-right: 0; }
+
+/* The four drawn icons in this app (comment count, target date, both theme
+   glyphs). One viewBox, one stroke weight, currentColor — they inherit whatever
+   the cell they sit in already decided. */
+.ico-s {
+  width: 13px;
+  height: 13px;
+  vertical-align: -2px;
+  flex-shrink: 0;
+}
+.cmt-n { display: inline-flex; align-items: center; gap: 3px; font-family: var(--mono); font-size: 11px; }
+
+/* Inside a mono badge the mark takes the badge's own size instead of the 13px
+   list size: a 13px ring beside a 9px date sets the badge height, and the row it
+   sits in grows with it. em keeps one number correct for all four. */
+.ag-kpi, .ri-td, .ri-pr, .due-badge, .ir-cmt, .ms {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.ag-kpi .ico-s, .ri-td .ico-s, .ri-pr .ico-s, .due-badge .ico-s, .ir-cmt .ico-s, .ms .ico-s {
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: 0;
+}
 
 .who {
   display: inline-grid;
@@ -373,6 +575,11 @@ html[data-theme="light"] .t-light { display: inline; }
   background: var(--skip);
 }
 .dot.open { background: var(--green); }
+/* Both dot shapes take their resting colour here, *above* the o-* block. The
+   step dots declared their own `background: var(--skip)` after it, which then
+   won against every outcome and rendered the whole strip grey — a run's step
+   history looked identical whether it passed or died. */
+.sdot { background: var(--skip); }
 
 .o-success { background: var(--green); }
 .o-failure,
@@ -383,6 +590,11 @@ html[data-theme="light"] .t-light { display: inline; }
 .o-queued { background: var(--muted); }
 /* A model sitting on disk is not a failure — hollow, not coloured. */
 .o-idle { background: transparent; box-shadow: inset 0 0 0 1.5px var(--skip); }
+/* Blocked is its own state, not "queued". A bead waiting on a blocker used to
+   borrow o-queued's filled light dot, which next to o-idle's hollow ring read
+   as *more* finished than an actionable bead — exactly backwards. Hollow says
+   "not done", amber says "waiting on something else". */
+.o-blocked { background: transparent; box-shadow: inset 0 0 0 1.5px var(--amber); }
 .o-cancelled,
 .o-skipped,
 .o-neutral,
@@ -401,6 +613,11 @@ html[data-theme="light"] .t-light { display: inline; }
   border: 1px solid transparent;
   white-space: nowrap;
 }
+/* Outline variant for labels whose colour is not data — bd labels, where the hex
+   was hardcoded. Tokens instead of a hex, so it follows the theme in both
+   directions; the filled version was tuned for the dark surface and inverted into
+   a near-black block on the light one. */
+.label.soft { border-color: var(--border-2); color: var(--muted); }
 
 /* ---- actions page ------------------------------------------------------ */
 
@@ -442,6 +659,9 @@ html[data-theme="light"] .t-light { display: inline; }
 }
 .proj-rate.good { color: var(--green); }
 .proj-rate.bad { color: var(--red); }
+/* No completed run means no rate to state. The bare "–" sitting where a
+   percentage belongs read as a collapse toggle, so it says so in words. */
+.proj-rate.unknown { color: var(--faint); font-weight: 400; font-size: 11px; }
 
 /* sparkline: bar height is duration, colour is outcome */
 .spark {
@@ -468,6 +688,12 @@ html[data-theme="light"] .t-light { display: inline; }
   padding: 8px 14px;
 }
 .run:hover { background: var(--lift); }
+/* A skipped or cancelled run is a non-event. It stayed at full weight, so a
+   column of them looked exactly as loud as the failure underneath — the page
+   ranked by recency where it should rank by consequence. */
+.run.quiet .run-t { color: var(--muted); }
+.run.quiet .steps { opacity: 0.55; }
+.run.quiet:hover .steps { opacity: 1; }
 .run-main { flex: 1; min-width: 0; }
 .run-t {
   font-size: 13px;
@@ -489,14 +715,19 @@ html[data-theme="light"] .t-light { display: inline; }
 .sha { font-family: var(--mono); }
 .sep { opacity: 0.4; }
 
-/* step dots: one per step of every job in the run */
+/* step dots: one per step of every job in the run. The resting colour is
+   declared next to .dot, above the o-* block — see the note there. */
 .steps { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
 .sdot {
   width: 11px;
   height: 4px;
   border-radius: 2px;
-  background: var(--skip);
 }
+/* A skipped step is the absence of work, so it recedes to the strip's track
+   rather than claiming a slot of its own. */
+.sdot.o-skipped,
+.sdot.o-cancelled,
+.sdot.o-neutral { background: var(--border-2); }
 
 .run-meta {
   display: flex;
@@ -507,7 +738,12 @@ html[data-theme="light"] .t-light { display: inline; }
   font-size: 11px;
   color: var(--muted);
 }
-.run-meta .d { font-family: var(--mono); }
+/* Two numbers stacked with no label: the duration is the measurement, the age is
+   context. At the same size and colour the reader has to parse both to learn
+   which is which, so the duration keeps the resting colour and the age steps
+   back. */
+.run-meta .d { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.run-meta .ago { color: var(--faint); }
 
 /* ---- widget pages ------------------------------------------------------ */
 
@@ -637,6 +873,12 @@ html[data-theme="light"] .t-light { display: inline; }
   height: 100px;
   z-index: 3;
 }
+/* HTTP code and latency are numbers you read *down* the list, so they get a
+   width and align right. Unset they made a ragged edge that had to be scanned
+   value by value. */
+.row.site .row-meta { gap: 11px; }
+.row.site .row-meta .num { min-width: 25px; text-align: right; }
+.row.site .row-meta .d { min-width: 46px; text-align: right; }
 
 /* Neither good nor bad: no model loaded is the normal resting state. */
 .sema-n.idle { color: var(--fg3); background: var(--lift); }
@@ -691,10 +933,17 @@ html[data-theme="light"] .t-light { display: inline; }
 
 /* An Ansible "fatal:" line is a single JSON blob with an embedded traceback, so
    the excerpt can be taller than the rest of the page. Cap it — the full log is
-   one click away now. */
+   one click away now. 240px still let five identical "macbook-pro UNREACHABLE"
+   blocks stack into a wall that buried the failures below it, so the cap is now
+   the first few lines with a fade that says there is more.
+   Deliberately not hover-to-expand: that jumps the layout under the pointer and
+   a phone can never trigger it. The fade is the signal, "vollständiges Log" is
+   the way through. */
 .sema-f .sema-log {
-  max-height: 240px;
-  overflow-y: auto;
+  max-height: 76px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 44px, transparent);
+  mask-image: linear-gradient(to bottom, #000 44px, transparent);
 }
 
 /* A labelled rule between groups of rows — shared by the monitor and the
@@ -735,14 +984,29 @@ html[data-theme="light"] .t-light { display: inline; }
 .sema-x[open] > summary.row::after { content: "⌄"; }
 .sema-x[open] > summary.row { background: var(--lift); }
 
+/* The native marker is suppressed above and nothing replaced it here, so the
+   only control on the card was grey 11px text directly under a faded log — it
+   read as the caption of the fade, not as the way past it. Hover said otherwise,
+   which a touch device never gets to hear. The caret is the standing affordance
+   and turns down when the log is out. */
 .sema-more {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px 8px;
   font-size: 11px;
   color: var(--fg3);
   border-top: 1px solid var(--red-line);
 }
+.sema-more::before {
+  content: "›";
+  font-size: 13px;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
 .sema-more:hover { color: var(--accent); }
 .sema-x[open] .sema-more { color: var(--accent); }
+.sema-x[open] .sema-more::before { transform: rotate(90deg); }
 
 .sema-lh {
   display: flex;
@@ -775,14 +1039,41 @@ html[data-theme="light"] .t-light { display: inline; }
   margin-bottom: 14px;
 }
 
+/* An empty state teaches the pane it sits in: <b> names the state, the first <p>
+   says what to do, a second <p> adds the thing that is not obvious. "nothing
+   here" is not a state, it is a shrug. */
 .empty {
   border: 1px dashed var(--border);
   border-radius: var(--r);
-  padding: 34px 20px;
+  padding: 26px 20px;
   text-align: center;
   color: var(--muted);
+  font-size: 13px;
 }
-.empty p { margin: 0; }
+.empty p { margin: 0; max-width: 46ch; margin-inline: auto; }
+.empty p + p { margin-top: 7px; color: var(--faint); font-size: 12px; }
+/* The headline of an empty state — a direct child, so it owns its own line. */
+.empty > b {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text);
+  font-weight: 600;
+}
+/* Inside a sentence it must stay inline: as a block it broke the paragraph in
+   three, and the tail after the emphasis ("; der Balken darunter …") started a
+   line on a semicolon. */
+.empty p b { color: var(--text); font-weight: 600; }
+.empty code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--sky);
+  background: var(--lift);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+/* At pane scale the dashed box draws a border around nothing and reads as a
+   drop target. Inside a card it still earns its outline. */
+.empty.plain { border: 0; padding: 40px 24px; }
 
 .meta {
   display: flex;
@@ -866,14 +1157,23 @@ a.seg-i { text-decoration: none; text-align: center; }
   color: var(--fg3);
 }
 .agenda-head.ov { color: var(--red); }
+/* Two lines, for the same reason as the beads rail: badge, title and repo shared
+   one 330px row and the title — the only part that says what the item is — was
+   left about 130px of it, so "Go-Live: Produktion vorbereiten" rendered as
+   "Go-Live: Prod…" beside a repo that was itself cut to "SWN-Power-Au…". Two
+   truncations are worse than one full line and a quiet second. */
 .agenda-item {
-  display: flex; align-items: center; gap: 9px; padding: 6px 8px;
+  display: block; padding: 5px 8px;
   border-radius: var(--r-sm); font-size: 12.5px; text-decoration: none;
 }
 .agenda-item:hover { background: var(--surface); }
-.agenda-item .ag-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.agenda-item .ag-title {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text);
+}
+.agenda-item .ag-meta { display: flex; align-items: center; gap: 7px; margin-top: 2px; }
 .agenda-item .ag-repo {
-  flex: 0 0 auto; font-size: 10.5px; color: var(--faint); max-width: 82px;
+  font-size: 10.5px; color: var(--faint);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
@@ -1094,25 +1394,72 @@ a.seg-i { text-decoration: none; text-align: center; }
 
 /* The beads page renders the widget straight into the viewport .panes grid:
    span all five of its columns and fill the height, so the widget's own panes
-   are the page. */
-.panes > .bd { grid-column: 1 / -1; height: 100%; }
+   are the page. The card bleed has to go with it — on the full-screen page there
+   is no card to bleed into, and -12/-14 pulled the repo rail off the left edge
+   and cut the detail pane short on the right. */
+.panes > .bd { grid-column: 1 / -1; height: 100%; margin: 0; }
+
+/* The repo rail ranks by what is actionable: the ready count is the number that
+   answers "is there anything to do here", so it is the one that gets the chip.
+   The trio 21/17/1 that stood here before needed a legend to read at all. */
+.bd .ri-top { display: flex; align-items: baseline; gap: 8px; }
+.bd .ri-top .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The two counts, one line below the name. Left-aligned as a pair: pushed apart
+   they read as two unrelated figures, next to each other as "17 of 21". */
+.bd .ri-nums { display: flex; align-items: baseline; gap: 7px; margin-top: 3px; }
+.bd .ri-ready {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--green);
+  background: var(--green-bg);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.bd .ri-open { flex-shrink: 0; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.bd .ri-nums .count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 
 .bd-list { display: none; padding: 0 8px 16px; }
 .bd-list.active { display: block; }
 .bd-row { cursor: pointer; border-radius: var(--r); border: 1px solid transparent; }
 .bd-row:hover { background: var(--lift); border-color: var(--border); }
 .bd-row.active { background: var(--accent-bg); border-color: var(--accent-line); }
+.bd-row .row-meta { gap: 6px; }
 
 /* One indent style for every nesting level — children under their epic and
    waiters under their blocker alike. The amber dot is what says "wartet",
    not a second gutter style. */
 .bd-nest { margin-left: 20px; border-left: 1px solid var(--border); padding-left: 6px; }
 
-/* The ready queue sits above the tree: green head, so the "do this now" list
-   reads as one block before the full tree scrolls by. */
-.bd-sec-ready { color: var(--green); padding-top: 8px; }
-.bd-sec-ready .sec-n { color: var(--green); }
-.bd-sec-tree { padding-top: 6px; }
+/* Ready is the block you act on; the tree below it is reference. They were two
+   heads of equal weight, so the page had no primary. Ranked here by head weight
+   and by the rule that closes the ready block — not by a tinted container, which
+   would collide with the selected row's accent fill. */
+.bd-sec-ready {
+  color: var(--green);
+  padding: 12px 14px 6px;
+  font-size: 12px;
+}
+.bd-sec-ready .sec-n {
+  color: var(--green);
+  background: var(--green-bg);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.bd-sec-ready .sec-sub {
+  margin-left: 2px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--faint);
+}
+.bd-sec-tree {
+  padding: 7px 14px 6px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
 
 .bd-details > .detail[hidden] { display: none; }
 .bd-detail-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -1121,6 +1468,12 @@ a.seg-i { text-decoration: none; text-align: center; }
 .bd-kids { margin-top: 6px; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
 .bd-kids .row { border-radius: 0; }
 .bd-kids .row + .row { border-top: 1px solid var(--border); }
+
+/* The repo tabs are the phone's replacement for the rail, which the 760px step
+   hides. Rendered always, shown only there — and they carry .bd-repo, so the
+   widget's existing click handler drives them with no extra JS. Without them the
+   second repo was simply unreachable on a phone. */
+.bd-tabs { display: none; }
 
 /* Narrow: the same two-step collapse as the planner page. */
 @media (max-width: 1100px) {
@@ -1132,4 +1485,29 @@ a.seg-i { text-decoration: none; text-align: center; }
 @media (max-width: 760px) {
   .bd { grid-template-columns: minmax(0, 1fr); }
   .bd [data-bd-resize="sidebar"], .bd .bd-repos { display: none; }
+
+  .bd .bd-tabs {
+    display: flex;
+    gap: 5px;
+    overflow-x: auto;
+    padding: 9px 12px 3px;
+    scrollbar-width: none;
+  }
+  .bd .bd-tabs::-webkit-scrollbar { display: none; }
+  .bd-tab {
+    flex: 0 0 auto;
+    padding: 4px 11px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .bd-tab.active { background: var(--accent-bg); border-color: var(--accent-line); color: var(--accent); font-weight: 600; }
+  .bd-tab.missing { color: var(--faint); }
+  .bd-tab .n { font-family: var(--mono); font-size: 10px; opacity: 0.7; }
+
+  /* The title identifies a bead; on a phone the label pills eat the line it
+     needs. Id and priority stay — that is how you name it back to bd. */
+  .bd-row .row-meta .label { display: none; }
+  .bd-nest { margin-left: 11px; padding-left: 5px; }
 }

@@ -89,9 +89,11 @@ func childTrail(parent []treeGuide, last bool) []treeGuide {
 // issueSection splits the middle pane into wayfinder work and everything
 // else. Wayfinder maps come first because they are the entry point into a
 // plan; a ticket read without its map is missing its context.
+// The section carried an Icon string (an emoji) until the head gained its own
+// colour: .sec-head.wf is already accent-coloured next to a neutral "Issues", so
+// the glyph repeated a distinction the type had already made.
 type issueSection struct {
 	Title string
-	Icon  string
 	Rows  []issueRow
 }
 
@@ -708,10 +710,10 @@ func buildIssueSections(issues []gh.Issue, kids map[string][]int) []issueSection
 
 	var sections []issueSection
 	if len(wfRows) > 0 {
-		sections = append(sections, issueSection{Title: "Wayfinder", Icon: "🗺️", Rows: wfRows})
+		sections = append(sections, issueSection{Title: "Wayfinder", Rows: wfRows})
 	}
 	if len(normRows) > 0 {
-		sections = append(sections, issueSection{Title: "Issues", Icon: "", Rows: normRows})
+		sections = append(sections, issueSection{Title: "Issues", Rows: normRows})
 	}
 	return sections
 }
