@@ -1,15 +1,15 @@
-# Secrets — never commit. .env.example and .env.j2 are tracked on purpose:
+# Secrets — never commit. .env.example and .env.j2 are TRACKED templates, so
+# `.env.*` does not affect them (gitignore never applies to tracked files) —
 # IaC-Stack's env-file.yml treats a missing template as success and the service
-# would start with every ${VAR} interpolated empty (same rule as rss-reader).
+# would otherwise start with every ${VAR} interpolated empty.
 #
-# The secret files are named one by one rather than caught by `.env.*` plus a
-# `!` negation, because this file has a second reader: IaC-Stack's rsync-build
-# translates every line into an `--exclude`, and a leading `!` there does not
-# un-exclude one pattern — it clears every rule collected above it. The role
+# No `!` negations anywhere in this file: it has a second reader. IaC-Stack's
+# rsync-build translates every line into an `--exclude`, and a leading `!` there
+# does not un-exclude one pattern — it clears every rule collected above it, so
+# the protection for data/, logs/ and .env would silently fall away. The role
 # refuses the whole deploy rather than mistranslate it.
 .env
-.env.local
-.env.*.local
+.env.*
 
 # Local cache / state
 *.db
@@ -35,8 +35,7 @@ logs/
 .impeccable/hook.pending.json
 .DS_Store
 .idea/
-# Whole directory, for the same reason as above — nothing in it is tracked.
-.vscode/
+.vscode/*
 
 # Go
 *.test
