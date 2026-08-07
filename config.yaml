@@ -178,6 +178,9 @@ pages:
                   - title: Traefik
                     url: https://traefik.lan.niclasedge.com
                     timeout: 5s
+                  - title: Glance
+                    url: https://glance.lan.niclasedge.com
+                    timeout: 5s
 
               - title: Lokal · Docker
                 sites:
@@ -227,10 +230,6 @@ pages:
                   - title: ntfy
                     url: https://ntfy.niclasedge.com
                     public-url: https://ntfy.niclasedge.com
-                  - title: glance
-                    url: https://glances.niclasedge.com
-                    expect-status: 401
-                    public-url: https://glances.niclasedge.com
                   - title: Global Dashboard
                     url: https://kanban2.niclasedge.com
                     expect-status: 401
