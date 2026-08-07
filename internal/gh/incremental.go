@@ -78,6 +78,9 @@ func (c *Client) IssuesSince(ctx context.Context, tok *Token, since time.Time) (
 			is := r.Issue
 			is.Repo = r.Repository.FullName
 			is.TokenName = tok.Name
+			if d, ok := is.PlannedDate(); ok {
+				is.Planned = &d
+			}
 			if d, ok := is.DueDate(); ok {
 				is.Due = &d
 			}

@@ -178,17 +178,20 @@ var weekdaysDE = [...]string{"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"}
 // dueBadge is the short form the sidebar shows: overdue, today, the weekday for
 // the coming week, then a date. The reference stops at the weekday, which reads
 // as "this week" for something three weeks out — hence the date.
-func dueBadge(due, today time.Time) (string, bool) {
-	diff := int(due.Sub(today).Hours() / 24)
+//
+// hard marks a deadline. Only a deadline can read "über" (red) — a slipped
+// *planned* date is not a missed commitment, it just keeps reading "heute".
+func dueBadge(date, today time.Time, hard bool) (string, bool) {
+	diff := int(date.Sub(today).Hours() / 24)
 	switch {
-	case diff < 0:
+	case diff < 0 && hard:
 		return "über", true
-	case diff == 0:
+	case diff <= 0:
 		return "heute", false
 	case diff <= 6:
-		return weekdaysDE[int(due.Weekday())], false
+		return weekdaysDE[int(date.Weekday())], false
 	default:
-		return due.Format("2.1."), false
+		return date.Format("2.1."), false
 	}
 }
 
@@ -326,7 +329,7 @@ func (s *Server) buildPlannerData(f plannerFilter) *plannerData {
 		if hasAnyLabel(is, blockedLabels) {
 			r.Blocked++
 		}
-		if is.Due != nil {
+		if is.AgendaDate() != nil {
 			r.Due++
 		}
 	}
@@ -435,16 +438,16 @@ func (s *Server) buildPlannerData(f plannerFilter) *plannerData {
 			}
 		}
 		// Dated work first and soonest first, then by number descending — a plain
-		// list sorted by "last touched" buries what is actually due.
+		// list sorted by "last touched" buries what is actually due or planned.
 		sort.SliceStable(d.Issues, func(i, j int) bool {
-			a, b := d.Issues[i], d.Issues[j]
+			a, b := d.Issues[i].AgendaDate(), d.Issues[j].AgendaDate()
 			switch {
-			case a.Due != nil && b.Due != nil && !a.Due.Equal(*b.Due):
-				return a.Due.Before(*b.Due)
-			case (a.Due != nil) != (b.Due != nil):
-				return a.Due != nil
+			case a != nil && b != nil && !a.Equal(*b):
+				return a.Before(*b)
+			case (a != nil) != (b != nil):
+				return a != nil
 			}
-			return a.Number > b.Number
+			return d.Issues[i].Number > d.Issues[j].Number
 		})
 		d.Sections = buildIssueSections(d.Issues, view.Kids)
 		for _, pr := range view.PRs {
@@ -481,28 +484,41 @@ func buildAgenda(issues []gh.Issue, f plannerFilter) ([]agendaGroup, int) {
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
 	type dated struct {
-		is  gh.Issue
-		due time.Time
+		is   gh.Issue
+		date time.Time // badge date: the deadline outranks the plan
+		hard bool      // it is a deadline — only those can go overdue
 	}
 	var all []dated
 	for _, is := range issues {
-		if is.Due == nil || is.State == "closed" {
+		if is.State == "closed" {
 			continue
 		}
-		all = append(all, dated{is, *is.Due})
+		switch {
+		case is.Due != nil:
+			all = append(all, dated{is, *is.Due, true})
+		case is.Planned != nil:
+			all = append(all, dated{is, *is.Planned, false})
+		}
 	}
 	if len(all) == 0 {
 		return nil, 0
 	}
+	// A slipped plan sorts like today — it never counts as late.
+	sortDate := func(x dated) time.Time {
+		if !x.hard && x.date.Before(today) {
+			return today
+		}
+		return x.date
+	}
 	sort.Slice(all, func(i, j int) bool {
-		if !all[i].due.Equal(all[j].due) {
-			return all[i].due.Before(all[j].due)
+		if !sortDate(all[i]).Equal(sortDate(all[j])) {
+			return sortDate(all[i]).Before(sortDate(all[j]))
 		}
 		return all[i].is.Repo < all[j].is.Repo
 	})
 
 	row := func(x dated) agendaItem {
-		badge, red := dueBadge(x.due, today)
+		badge, red := dueBadge(x.date, today, x.hard)
 		short := x.is.Repo
 		if i := strings.IndexByte(short, '/'); i >= 0 {
 			short = short[i+1:]
@@ -517,7 +533,7 @@ func buildAgenda(issues []gh.Issue, f plannerFilter) ([]agendaGroup, int) {
 	var overdue, upcoming agendaGroup
 	overdue.Overdue = true
 	for _, x := range all {
-		if x.due.Before(today) {
+		if x.hard && x.date.Before(today) {
 			overdue.Items = append(overdue.Items, row(x))
 			continue
 		}
@@ -567,14 +583,19 @@ func newTopRowCtx(d *plannerData, is gh.Issue) rowCtx {
 	return rowCtx{Data: d, Row: issueRow{Issue: is}}
 }
 
-// DueBadge is what a row in the middle pane shows next to its title.
+// DueBadge is what a row in the middle pane shows next to its title. The
+// deadline outranks the plan when a row carries both.
 func (d *plannerData) DueBadge(is gh.Issue) agendaItem {
-	if is.Due == nil {
+	date, hard := is.Due, true
+	if date == nil {
+		date, hard = is.Planned, false
+	}
+	if date == nil {
 		return agendaItem{}
 	}
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	badge, red := dueBadge(*is.Due, today)
+	badge, red := dueBadge(*date, today, hard)
 	return agendaItem{Badge: badge, Red: red}
 }
 

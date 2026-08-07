@@ -226,6 +226,10 @@ func (c *Client) CreateLabel(ctx context.Context, tok *Token, repo, name, color 
 func enrich(is Issue, repo string, tok *Token) Issue {
 	is.Repo = repo
 	is.TokenName = tok.Name
+	is.Planned = nil
+	if d, ok := is.PlannedDate(); ok {
+		is.Planned = &d
+	}
 	is.Due = nil
 	if d, ok := is.DueDate(); ok {
 		is.Due = &d

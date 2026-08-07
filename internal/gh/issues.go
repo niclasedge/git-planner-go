@@ -63,10 +63,21 @@ type Issue struct {
 	Repo      string `json:"-"`
 	TokenName string `json:"-"`
 
-	// Due is DueDate() computed once at fetch time. The agenda needs a date for
-	// every issue, and re-running the body patterns over a few hundred bodies on
-	// every render would cost more than the whole page does today.
-	Due *time.Time `json:"-"`
+	// Planned/Due are PlannedDate()/DueDate() computed once at fetch time. The
+	// agenda needs the dates for every issue, and re-running the body patterns
+	// over a few hundred bodies on every render would cost more than the whole
+	// page does today. Planned is soft (never overdue), Due is the deadline.
+	Planned *time.Time `json:"-"`
+	Due     *time.Time `json:"-"`
+}
+
+// AgendaDate is what agenda-style lists sort by: the plan when one exists,
+// otherwise the deadline.
+func (i Issue) AgendaDate() *time.Time {
+	if i.Planned != nil {
+		return i.Planned
+	}
+	return i.Due
 }
 
 func (i Issue) IsPR() bool { return i.PullRequest != nil }
@@ -145,6 +156,9 @@ func (c *Client) Issues(ctx context.Context, tok *Token, repos []Repo, q IssueQu
 		for _, is := range raw {
 			is.Repo = r.FullName
 			is.TokenName = tok.Name
+			if d, ok := is.PlannedDate(); ok {
+				is.Planned = &d
+			}
 			if d, ok := is.DueDate(); ok {
 				is.Due = &d
 			}

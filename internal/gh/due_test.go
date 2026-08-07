@@ -5,13 +5,34 @@ import (
 	"time"
 )
 
-func TestParseDue(t *testing.T) {
+// assertDate runs one parse case against a parser under test.
+func assertDate(t *testing.T, parse func(string) (time.Time, bool), body, want string) {
+	t.Helper()
+	got, ok := parse(body)
+	if want == "" {
+		if ok {
+			t.Fatalf("expected no date, got %s", got.Format("2006-01-02"))
+		}
+		return
+	}
+	if !ok {
+		t.Fatalf("expected %s, got none", want)
+	}
+	if s := got.Format("2006-01-02"); s != want {
+		t.Fatalf("expected %s, got %s", want, s)
+	}
+	if got.Location() != time.UTC {
+		t.Fatalf("expected UTC, got %s", got.Location())
+	}
+}
+
+// Target = planned. The soft date — ParseDue must not pick these up.
+func TestParsePlanned(t *testing.T) {
 	cases := []struct {
 		name string
 		body string
-		want string // "" means: no due date
+		want string // "" means: no date
 	}{
-		// The convention the existing issues actually use.
 		{"canonical", "target date: 2026-08-01", "2026-08-01"},
 		{"canonical in text", "Ablauf klären.\n\ntarget date: 2026-08-01\n\nDanach Review.", "2026-08-01"},
 		{"target_date", "target_date: 2026-08-01", "2026-08-01"},
@@ -19,13 +40,7 @@ func TestParseDue(t *testing.T) {
 		{"uppercase", "Target Date: 2026-08-01", "2026-08-01"},
 		{"leading space", "   target date: 2026-08-01   ", "2026-08-01"},
 		{"crlf", "target date: 2026-08-01\r\nnext", "2026-08-01"},
-
-		{"due", "due: 2026-08-01", "2026-08-01"},
-		{"due date inline", "Bitte bis due date: 2026-08-01 fertig", "2026-08-01"},
-		{"at-due", "Task @due(2026-08-01) erledigen", "2026-08-01"},
-		{"emoji", "Deadline 📅 2026-08-01", "2026-08-01"},
-		{"german", "fällig: 01.08.2026", "2026-08-01"},
-		{"german ae", "faellig: 01.08.2026", "2026-08-01"},
+		{"german day-first", "target: 01.08.2026", "2026-08-01"},
 
 		{"empty", "", ""},
 		{"no date", "Kein Datum hier drin.", ""},
@@ -35,36 +50,49 @@ func TestParseDue(t *testing.T) {
 		// Not anchored and not one of the keywords: must not be picked up.
 		{"unrelated date", "Siehe Release 2026-08-01 im Changelog", ""},
 		{"prose mentioning target", "Das target date steht noch nicht fest", ""},
+		// A due line is the other kind of date.
+		{"due is not planned", "due: 2026-08-01", ""},
 	}
-
 	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			got, ok := ParseDue(c.body)
-			if c.want == "" {
-				if ok {
-					t.Fatalf("expected no due date, got %s", got.Format("2006-01-02"))
-				}
-				return
-			}
-			if !ok {
-				t.Fatalf("expected %s, got none", c.want)
-			}
-			if s := got.Format("2006-01-02"); s != c.want {
-				t.Fatalf("expected %s, got %s", c.want, s)
-			}
-			if got.Location() != time.UTC {
-				t.Fatalf("expected UTC, got %s", got.Location())
-			}
-		})
+		t.Run(c.name, func(t *testing.T) { assertDate(t, ParsePlanned, c.body, c.want) })
 	}
 }
 
-// The canonical line is stripped so the date is not shown twice; the inline
-// forms are part of a sentence and must survive.
+// Due = deadline. The hard date — ParsePlanned must not pick these up.
+func TestParseDue(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"canonical", "due: 2026-08-01", "2026-08-01"},
+		{"due date line", "Due date: 2026-08-01", "2026-08-01"},
+		{"due date inline", "Bitte bis due date: 2026-08-01 fertig", "2026-08-01"},
+		{"at-due", "Task @due(2026-08-01) erledigen", "2026-08-01"},
+		{"emoji", "Deadline 📅 2026-08-01", "2026-08-01"},
+		{"german", "fällig: 01.08.2026", "2026-08-01"},
+		{"german ae", "faellig: 01.08.2026", "2026-08-01"},
+
+		{"empty", "", ""},
+		{"no date", "Kein Datum hier drin.", ""},
+		{"impossible day", "due: 2026-02-31", ""},
+		{"unrelated date", "Siehe Release 2026-08-01 im Changelog", ""},
+		// A target line is the other kind of date.
+		{"planned is not due", "target date: 2026-08-01", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) { assertDate(t, ParseDue, c.body, c.want) })
+	}
+}
+
+// The canonical lines (planned and due) are stripped so the dates are not
+// shown twice; the inline forms are part of a sentence and must survive.
 func TestStripDue(t *testing.T) {
 	cases := []struct{ name, body, want string }{
 		{"strips the line", "Titeltext\n\ntarget date: 2026-08-01\n\nRest", "Titeltext\n\n\n\nRest"},
 		{"only the line", "target date: 2026-08-01", ""},
+		{"strips the due line", "Titel\n\nDue: 2026-08-15", "Titel"},
+		{"strips both lines", "target date: 2026-08-01\ndue: 2026-08-15\n\nRest", "Rest"},
 		{"keeps inline due", "Bitte bis due: 2026-08-01 fertig", "Bitte bis due: 2026-08-01 fertig"},
 		{"keeps prose", "Kein Datum hier.", "Kein Datum hier."},
 	}
@@ -78,14 +106,24 @@ func TestStripDue(t *testing.T) {
 }
 
 // The body wins over the milestone: the line is about this issue, the milestone
-// is about a batch of them.
+// is about a batch of them. A target line is a plan, not a deadline — it must
+// not feed DueDate.
 func TestDueDateMilestoneFallback(t *testing.T) {
 	ms := time.Date(2026, 9, 15, 7, 0, 0, 0, time.UTC)
 
-	withBody := Issue{Body: "target date: 2026-08-01", Milestone: &Milestone{DueOn: &ms}}
+	withBody := Issue{Body: "due: 2026-08-01", Milestone: &Milestone{DueOn: &ms}}
 	got, ok := withBody.DueDate()
 	if !ok || got.Format("2006-01-02") != "2026-08-01" {
 		t.Fatalf("body should win, got %v (%v)", got, ok)
+	}
+
+	planned := Issue{Body: "target date: 2026-08-01", Milestone: &Milestone{DueOn: &ms}}
+	got, ok = planned.DueDate()
+	if !ok || got.Format("2006-01-02") != "2026-09-15" {
+		t.Fatalf("a target line is not a deadline; expected milestone, got %v (%v)", got, ok)
+	}
+	if p, ok := planned.PlannedDate(); !ok || p.Format("2006-01-02") != "2026-08-01" {
+		t.Fatalf("PlannedDate should read the target line, got %v (%v)", p, ok)
 	}
 
 	onlyMilestone := Issue{Body: "kein Datum", Milestone: &Milestone{DueOn: &ms}}
@@ -139,11 +177,15 @@ func TestSetDue(t *testing.T) {
 		t.Fatalf("clear must not touch prose: got %q", got)
 	}
 
-	// Round trip: whatever SetDue writes, ParseDue reads back.
+	// Round trip: SetDue writes the planned (target) line, so ParsePlanned
+	// reads it back — and ParseDue must not mistake it for a deadline.
 	body := SetDue("Irgendein Text\n\n- [ ] Aufgabe", sep)
-	got, ok := ParseDue(body)
+	got, ok := ParsePlanned(body)
 	if !ok || !got.Equal(sep) {
 		t.Fatalf("round trip failed: %v (%v) from %q", got, ok, body)
+	}
+	if _, ok := ParseDue(body); ok {
+		t.Fatalf("a written target line must not parse as a deadline: %q", body)
 	}
 	if StripDue(body) != "Irgendein Text\n\n- [ ] Aufgabe" {
 		t.Fatalf("StripDue should undo SetDue, got %q", StripDue(body))

@@ -6,32 +6,63 @@ import (
 	"time"
 )
 
-// GitHub has no due date for issues — only milestones have one. So the date
-// lives in the body by convention, and the convention that matters is the one
-// the existing issues already use:
+// GitHub has no dates for issues — only milestones have one. So the dates live
+// in the body by convention, and since the planned/due split there are two:
 //
-//	target date: 2026-08-01
+//	target date: 2026-08-01   ← planned ("an dem Tag will ich daran arbeiten")
+//	due: 2026-08-15           ← deadline ("bis dahin muss es fertig sein")
 //
-// That form is checked first and is the only one anchored to a whole line, which
-// is what makes it safe to strip from the rendered body. The rest are accepted
-// because they are what people actually type; first match wins.
-var duePatterns = []*regexp.Regexp{
-	// The canonical line. Anchored, so "target date:" inside a sentence is not a
-	// due date and does not get cut out of the text.
+// A slipped plan never turns red; only a missed deadline does. The same split
+// the iOS app and the web app use, reading the same markers.
+
+// plannedPatterns match the planned date. Anchored to a whole line, which is
+// what makes it safe to strip from the rendered body.
+var plannedPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?im)^[ \t]*target(?:[ \t_-]*date)?[ \t]*:[ \t]*(\d{4})-(\d{2})-(\d{2})[ \t]*\r?$`),
+}
+
+// plannedDE is the day-first form people type in German. Kept separate because
+// the capture order is reversed, not because the parsing differs.
+var plannedDE = regexp.MustCompile(
+	`(?i)\btarget(?:[ \t_-]*date)?[ \t]*:[ \t]*(\d{2})\.(\d{2})\.(\d{4})`)
+
+// duePatterns match the deadline. The anchored line is checked first; the rest
+// are accepted because they are what people actually type. First match wins.
+var duePatterns = []*regexp.Regexp{
+	// The canonical line, anchored like the planned one.
+	regexp.MustCompile(`(?im)^[ \t]*due(?:[ \t_-]*date)?[ \t]*:[ \t]*(\d{4})-(\d{2})-(\d{2})[ \t]*\r?$`),
 	regexp.MustCompile(`(?i)\bdue(?:[ \t_-]*date)?[ \t]*:[ \t]*(\d{4})-(\d{2})-(\d{2})`),
 	regexp.MustCompile(`(?i)@due\([ \t]*(\d{4})-(\d{2})-(\d{2})[ \t]*\)`),
 	regexp.MustCompile(`\x{1F4C5}[ \t]*(\d{4})-(\d{2})-(\d{2})`), // 📅 2026-08-01
 }
 
-// dueDatesDE matches the day-first form people type in German. Kept separate
-// because the capture order is reversed, not because the parsing differs.
 var dueDatesDE = regexp.MustCompile(
-	`(?i)\b(?:target|due|f(?:ä|ae)llig)(?:[ \t_-]*date)?[ \t]*:[ \t]*(\d{2})\.(\d{2})\.(\d{4})`)
+	`(?i)\b(?:due|f(?:ä|ae)llig)(?:[ \t_-]*date)?[ \t]*:[ \t]*(\d{2})\.(\d{2})\.(\d{4})`)
 
-// ParseDue reads a target date out of an issue body. The returned time is a
-// plain calendar day in UTC: a due date is a day, not an instant, and pinning it
-// to local midnight would make it shift for anyone in another timezone.
+// ParsePlanned reads the planned date out of an issue body. The returned time
+// is a plain calendar day in UTC: a date is a day, not an instant, and pinning
+// it to local midnight would make it shift for anyone in another timezone.
+func ParsePlanned(body string) (time.Time, bool) {
+	if body == "" {
+		return time.Time{}, false
+	}
+	for _, re := range plannedPatterns {
+		if m := re.FindStringSubmatch(body); m != nil {
+			if t, ok := day(m[1], m[2], m[3]); ok {
+				return t, true
+			}
+		}
+	}
+	if m := plannedDE.FindStringSubmatch(body); m != nil {
+		if t, ok := day(m[3], m[2], m[1]); ok {
+			return t, true
+		}
+	}
+	return time.Time{}, false
+}
+
+// ParseDue reads the deadline out of an issue body. Same day-in-UTC contract
+// as ParsePlanned.
 func ParseDue(body string) (time.Time, bool) {
 	if body == "" {
 		return time.Time{}, false
@@ -61,11 +92,12 @@ func day(y, m, d string) (time.Time, bool) {
 	return t, true
 }
 
-// StripDue removes the canonical target-date line so it is not repeated in the
-// rendered body. Only the anchored pattern is stripped — the inline forms are
-// part of a sentence, and cutting them would leave the text mangled.
+// StripDue removes the canonical date lines (planned and due) so they are not
+// repeated in the rendered body. Only the anchored patterns are stripped — the
+// inline forms are part of a sentence, and cutting them would mangle the text.
 func StripDue(body string) string {
-	out := duePatterns[0].ReplaceAllString(body, "")
+	out := plannedPatterns[0].ReplaceAllString(body, "")
+	out = duePatterns[0].ReplaceAllString(out, "")
 	return strings.Trim(out, "\n\r \t")
 }
 
@@ -74,20 +106,20 @@ func StripDue(body string) string {
 // keeps the convention it arrived with.
 const dueLinePrefix = "target date: "
 
-// SetDue rewrites the canonical target-date line in a body. A zero date removes
-// it. The line goes to the top: it is metadata about the issue, and the top is
-// the one position that is stable no matter what the body ends with.
+// SetDue rewrites the canonical planned-date line in a body. A zero date
+// removes it. The line goes to the top: it is metadata about the issue, and the
+// top is the one position that is stable no matter what the body ends with.
 //
 // Only the anchored form is touched, so a date written into a sentence survives —
 // which also means it keeps being parsed. Callers that clear a date should check
-// with ParseDue whether one is left and say so, rather than cutting prose.
+// with ParsePlanned whether one is left and say so, rather than cutting prose.
 func SetDue(body string, due time.Time) string {
 	var keep []string
 	for _, line := range strings.Split(body, "\n") {
 		// The anchored pattern is a whole line by definition, so matching it
 		// line by line is the same test — and it takes the newline with it,
 		// which a ReplaceAll on the whole body would leave behind as a blank.
-		if duePatterns[0].MatchString(line) {
+		if plannedPatterns[0].MatchString(line) {
 			continue
 		}
 		keep = append(keep, line)
@@ -104,7 +136,13 @@ func SetDue(body string, due time.Time) string {
 	return line + "\n\n" + rest
 }
 
-// DueDate is the issue's target date: the body convention first, the milestone's
+// PlannedDate is the issue's planned date — the body convention only. No
+// milestone fallback: a milestone describes a batch's deadline, not a plan.
+func (i Issue) PlannedDate() (time.Time, bool) {
+	return ParsePlanned(i.Body)
+}
+
+// DueDate is the issue's deadline: the body convention first, the milestone's
 // own due date as a fallback. Milestones come second because they describe a
 // batch — the line in the body is about this one issue.
 func (i Issue) DueDate() (time.Time, bool) {
