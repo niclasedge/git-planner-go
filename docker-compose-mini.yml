@@ -1,0 +1,66 @@
+# git-planner — the planner/monitor from netcup, now on the Mac mini at
+# git.lan.niclasedge.com (moved 2026-08-07, IaC-Stack-ese).
+#
+# The netcup compose (docker-compose-netcup.yml) differs from this one in
+# three ways, each deliberate:
+#
+#   * No published port: the Mini's validate_services.py contract forbids a
+#     port next to a domain (Docker's iptables sit in front of the firewall and
+#     would bypass Traefik's TLS and middlewares). Traefik reaches this
+#     container over the `proxy` network. The app has no login — who is
+#     allowed to use it is decided by the network: *.lan.niclasedge.com
+#     resolves only on the tailnet/LAN, so the old "everyone in the tailnet can
+#     edit issues" security model carries over unchanged.
+#   * data/ is a BIND MOUNT at ~/data/git-planner, OUTSIDE the rsync-build
+#     deploy target on purpose — the same reason the netcup version used a
+#     named volume. The SQLite cache is runtime state; rsync-build runs with
+#     `--delete` and must never be able to reach it.
+#   * No extra_hosts: the netcup host had Tailscale DNS disabled, so
+#     *.lan.niclasedge.com fell through to webgo's wildcard and pointed back at
+#     netcup itself. The Mini's host DOES resolve the zone (Tailscale
+#     Split-DNS + CoreDNS), the container inherits that resolver, and the image
+#     already carries the mkcert CA (Dockerfile: lan-ca.crt +
+#     update-ca-certificates) — so the monitor's lan checks work without
+#     hardcoded IPs.
+#
+# The /healthz router carries no middleware: the deploy healthcheck is disabled
+# for this service (controller does not trust the Mini's CA), but the endpoint
+# is still useful from the LAN and reads no state.
+services:
+  git-planner:
+    build: .
+    image: git-planner:mini
+    container_name: git-planner
+    restart: unless-stopped
+
+    environment:
+      GITPLANNER_BIND: 0.0.0.0:8092
+
+    env_file:
+      - .env
+
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - /Users/niclasedge/data/git-planner:/app/data
+
+    networks:
+      - proxy
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.git-planner.entrypoints=websecure"
+      - "traefik.http.routers.git-planner.rule=Host(`git.lan.niclasedge.com`)"
+      - "traefik.http.routers.git-planner.middlewares=secureHeaders@file"
+      - "traefik.http.services.git-planner.loadbalancer.server.port=8092"
+      - "traefik.http.routers.git-planner-health.entrypoints=websecure"
+      - "traefik.http.routers.git-planner-health.rule=Host(`git.lan.niclasedge.com`) && Path(`/healthz`)"
+      # References the SAME service — a second loadbalancer label here would
+      # create a second service and Traefik would refuse to link either router
+      # ("cannot be linked automatically with multiple Services", measured
+      # 2026-08-07).
+      - "traefik.http.routers.git-planner-health.service=git-planner"
+
+networks:
+  proxy:
+    external: true
