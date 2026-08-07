@@ -43,6 +43,25 @@ services:
       - ./config.yaml:/app/config.yaml:ro
       - git-planner-data:/app/data
 
+    # The Mac mini's lan zone, resolved explicitly.
+    #
+    # This host does NOT resolve *.lan.niclasedge.com: Tailscale DNS is disabled
+    # on it (normal for a server — accepting it would hand the resolver of a VPS
+    # running 48 services to the tailnet), so the query falls through to webgo's
+    # wildcard *.niclasedge.com and comes back as 202.61.247.130 — this very
+    # machine. A monitor check would then quietly test netcup's own Traefik and
+    # report the Mini as healthy while it could be down.
+    #
+    # extra_hosts rather than `dns:`: pointing the container at the Mini's
+    # CoreDNS would work for this zone and break everything else, because that
+    # resolver answers REFUSED outside it by design (it listens on 0.0.0.0 and
+    # must not become an open recursive resolver).
+    extra_hosts:
+      - "searxng.lan.niclasedge.com:100.113.130.16"
+      - "searxng-vpn.lan.niclasedge.com:100.113.130.16"
+      - "kibana.lan.niclasedge.com:100.113.130.16"
+      - "traefik.lan.niclasedge.com:100.113.130.16"
+
     networks:
       - proxy
 

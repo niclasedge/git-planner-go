@@ -19,6 +19,21 @@ FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata
 ENV TZ=Europe/Berlin
 
+# The homelab's mkcert CA, so the monitor widget can check the services on the
+# Mac mini at https://<name>.lan.niclasedge.com. Those publish no port — the
+# IaC-Stack contract forbids one next to a domain, because Docker's iptables
+# rules sit in front of UFW — so the Traefik route is the only way to observe
+# them, and without this CA every such check fails on TLS instead of reporting
+# health. A permanently red check is worse than none: it teaches people to look
+# away.
+#
+# This is a public certificate, not a secret; the private half never left the
+# MacBook. update-ca-certificates APPENDS to the bundle, so api.github.com and
+# every other public endpoint keep validating exactly as before — replacing
+# /etc/ssl/certs/ca-certificates.crt with a mount would have broken them.
+COPY lan-ca.crt /usr/local/share/ca-certificates/lan-ca.crt
+RUN update-ca-certificates
+
 WORKDIR /app
 COPY --from=build /out/git-planner /usr/local/bin/git-planner
 

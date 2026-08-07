@@ -116,6 +116,33 @@ pages:
             title: Dienste
             cache: 60s
             groups:
+              # Mac mini — der Always-on-Dienst-Host seit 2026-08-06.
+              #
+              # Geprüft wird die Traefik-Route, nicht ein Port: diese Dienste
+              # publishen keinen mehr (validate_services.py verbietet einen Port
+              # neben einer Domain, weil Dockers iptables-Regeln vor UFW sitzen
+              # und der Port Traefiks TLS und Middlewares umginge).
+              #
+              # Zwei Voraussetzungen stecken deshalb im Stack und nicht hier:
+              # die mkcert-CA im Trust Store des Images (Dockerfile) und die
+              # extra_hosts-Einträge, weil dieser Host *.lan.niclasedge.com
+              # sonst über webgos Wildcard auf sich selbst auflöst.
+              - title: Mac mini · Traefik
+                sites:
+                  - title: SearXNG
+                    url: https://searxng.lan.niclasedge.com
+                    timeout: 5s
+                  - title: SearXNG · VPN
+                    url: https://searxng-vpn.lan.niclasedge.com
+                    timeout: 5s
+                  - title: Kibana
+                    url: https://kibana.lan.niclasedge.com
+                    check-url: https://kibana.lan.niclasedge.com/api/status
+                    timeout: 5s
+                  - title: Traefik
+                    url: https://traefik.lan.niclasedge.com
+                    timeout: 5s
+
               - title: Lokal · Docker
                 sites:
                   # Kein Docker-Publish, lauscht nur auf Loopback — die
@@ -128,24 +155,6 @@ pages:
                     timeout: 3s
                   - title: glance
                     url: http://100.123.180.46:3000
-                    timeout: 3s
-                  # SearXNG ist hier ENTFERNT, nicht vergessen: es läuft seit
-                  # 2026-08-06 auf dem Mac mini hinter Traefik
-                  # (https://searxng.lan.niclasedge.com) und publiziert keinen
-                  # Port mehr — validate_services.py verbietet einen Port neben
-                  # einer Domain, weil Dockers iptables-Regeln vor UFW sitzen und
-                  # der Port Traefiks TLS und Middlewares umgehen würde.
-                  #
-                  # Ein Check auf die Traefik-Route scheitert von hier aus an TLS:
-                  # dieser Container kennt die mkcert-CA der lan-Zone nicht. Ein
-                  # dauerhaft roter Check wäre schlimmer als keiner — er erzieht
-                  # zum Wegsehen. Wiederaufnahme, sobald die CA im Trust Store
-                  # dieses Containers liegt (eigener Bead).
-                  - title: Kibana
-                    url: http://100.123.180.46:5601
-                    check-url: http://100.123.180.46:5601/api/status
-                  - title: Elasticsearch
-                    url: http://100.123.180.46:9200
                     timeout: 3s
                   - title: grinde-viewer
                     url: http://100.123.180.46:8091
