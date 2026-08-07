@@ -127,22 +127,30 @@ pages:
               # die mkcert-CA im Trust Store des Images (Dockerfile) und die
               # extra_hosts-Einträge, weil dieser Host *.lan.niclasedge.com
               # sonst über webgos Wildcard auf sich selbst auflöst.
-              - title: Mac mini · Traefik
-                sites:
-                  - title: SearXNG
-                    url: https://searxng.lan.niclasedge.com
-                    timeout: 5s
-                  - title: SearXNG · VPN
-                    url: https://searxng-vpn.lan.niclasedge.com
-                    timeout: 5s
-                  - title: Kibana
-                    url: https://kibana.lan.niclasedge.com
-                    check-url: https://kibana.lan.niclasedge.com/api/status
-                    timeout: 5s
-                  - title: Traefik
-                    url: https://traefik.lan.niclasedge.com
-                    timeout: 5s
-
+              # NOCH KEINE Checks, und das ist gemessen, nicht vergessen:
+              # von diesem Host aus ist der Mini auf ANWENDUNGSEBENE nicht
+              # erreichbar, obwohl alles darunter funktioniert.
+              #
+              #   tailscale ping 100.113.130.16   -> pong, 67 ms
+              #   </dev/tcp/100.113.130.16/443    -> offen (auch 80, 9200, 53)
+              #   curl http://100.113.130.16:9200 -> 000, jede Anfrage laeuft
+              #                                      in einen Timeout
+              #
+              # Kein MTU-Problem: netcup->Mini und netcup->MacBook scheitern
+              # beide identisch ab 1400 Byte (Tailscales 1280er MTU) und beide
+              # sind bei 1200 in Ordnung. Und netcup->MacBook:8093 liefert
+              # sauber HTML. Es trifft also nur diesen einen Peer, und zwar
+              # zwischen Handshake und Nutzdaten.
+              #
+              # Die Vorarbeit steht trotzdem und ist Voraussetzung: die
+              # mkcert-CA liegt im Image (Dockerfile) und extra_hosts loest die
+              # Zone auf die Tailnet-IP statt auf webgos Wildcard. Sobald die
+              # Strecke traegt, sind die Checks vier Zeilen.
+              #
+              # Bewusst nicht eingetragen und rot stehen gelassen: ein
+              # dauerhaft roter Check erzieht zum Wegsehen — dieselbe
+              # Begruendung, aus der SearXNG hier entfernt statt umgehaengt
+              # wurde. Offen als IaC-Stack-ese.7.
               - title: Lokal · Docker
                 sites:
                   # Kein Docker-Publish, lauscht nur auf Loopback — die
