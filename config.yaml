@@ -181,6 +181,13 @@ pages:
                   - title: Glance
                     url: https://glance.lan.niclasedge.com
                     timeout: 5s
+                  - title: Kanban
+                    # Bleibt auf netcup, ist aber seit 2026-08-07 nur noch
+                    # tailnet-intern: public-Route weg, Mini-Traefik proxied
+                    # kanban.lan.niclasedge.com -> netcup via tailscale serve.
+                    # 303 auf /login ist die gesunde Antwort (App-Auth).
+                    url: https://kanban.lan.niclasedge.com
+                    timeout: 5s
 
               - title: Lokal · Docker
                 sites:
@@ -224,9 +231,6 @@ pages:
                     url: http://100.109.141.47:3001
                   - title: SearXNG
                     url: http://100.109.141.47:8082
-                  - title: Kanban
-                    url: https://kanban.niclasedge.com
-                    public-url: https://kanban.niclasedge.com
                   - title: ntfy
                     url: https://ntfy.niclasedge.com
                     public-url: https://ntfy.niclasedge.com
