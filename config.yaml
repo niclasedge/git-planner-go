@@ -135,34 +135,17 @@ pages:
               #
               # Geprüft wird die Traefik-Route, nicht ein Port: diese Dienste
               # publishen keinen mehr (validate_services.py verbietet einen Port
-              # neben einer Domain, weil Dockers iptables-Regeln vor UFW sitzen
-              # und der Port Traefiks TLS und Middlewares umginge).
+              # neben einer Domain). Zwei Dinge stecken deshalb im Stack, nicht
+              # hier: die mkcert-CA im Trust Store des Images (Dockerfile) und —
+              # da dieser Container auf dem MINI läuft — die Tailscale-DNS-
+              # Auflösung der *.lan.niclasedge.com-Zone durch den Host (kein
+              # extra_hosts nötig; das war der netcup-Deploy, der auf Webgos
+              # Wildcard zurückfiel).
               #
-              # Zwei Voraussetzungen stecken deshalb im Stack und nicht hier:
-              # die mkcert-CA im Trust Store des Images (Dockerfile) und die
-              # extra_hosts-Einträge, weil dieser Host *.lan.niclasedge.com
-              # sonst über webgos Wildcard auf sich selbst auflöst.
-              # Mac mini — der Always-on-Dienst-Host seit 2026-08-06.
-              #
-              # Geprüft wird die Traefik-Route, nicht ein Port: diese Dienste
-              # publishen keinen mehr (validate_services.py verbietet einen Port
-              # neben einer Domain, weil Dockers iptables-Regeln vor UFW sitzen
-              # und der Port Traefiks TLS und Middlewares umginge).
-              #
-              # Zwei Voraussetzungen stecken deshalb im Stack, nicht hier: die
-              # mkcert-CA im Trust Store des Images (Dockerfile) und die
-              # extra_hosts-Einträge, weil dieser Host *.lan.niclasedge.com
-              # sonst über webgos Wildcard auf SICH SELBST auflöst — ein Check
-              # hätte dann still den eigenen Traefik geprüft.
-              #
-              # Diese Checks waren am 07.08. schon einmal zurückgenommen, weil
-              # von hier aus nichts durchkam: TCP-Handshakes gelangen, jede
-              # HTTP-Anfrage lief in einen Timeout. Die Ursache war NICHT das
-              # Netz, sondern eine haengende OrbStack-Engine auf dem Mini —
-              # deren Host-Listener nimmt Verbindungen an, waehrend kein
-              # Container mehr antwortet. Merksatz: bei "Port offen, aber keine
-              # Daten" gegen einen Docker-Host zuerst die Engine pruefen
-              # (curl --unix-socket … /_ping muss OK liefern, nicht leer).
+              # Kanban, Affiliate und RSS bleiben auf netcup (ihre Datenquellen
+              # liegen dort), sind aber seit 2026-08-07 nur noch tailnet-intern:
+              # der Mini-Traefik proxied die .lan-URLs per tailscale serve zum
+              # netcup.
               - title: Mac mini · Traefik
                 sites:
                   - title: SearXNG
@@ -198,20 +181,18 @@ pages:
                     # noch intern, ohne Auth.
                     url: https://rss.lan.niclasedge.com
                     timeout: 5s
+                  - title: Manga
+                    # Manga-Reader, aus eink ausgekoppelt — seit 2026-08-07 auf
+                    # dem Mini (manga.lan.niclasedge.com).
+                    url: https://manga.lan.niclasedge.com
+                    timeout: 5s
 
-              - title: Lokal · Docker
+              # Dienste, die auf dem MACHBOOK laufen (Loopback, via
+              # tailscale serve auf der Tailnet-IP erreichbar). Von hier — dem
+              # git-planner-Container auf dem Mini — ist nur die Tailnet-IP
+              # sichtbar, nicht localhost.
+              - title: MacBook · Loopback
                 sites:
-                  # Kein Docker-Publish, lauscht nur auf Loopback — die
-                  # Tailnet-IP bedient `tailscale serve --tcp=8090` auf dem
-                  # Mac. So prüft dieselbe Zeile nativ wie aus dem
-                  # netcup-Container (wo host.docker.internal nicht auflöst).
-                  # Rot, solange die App nicht läuft.
-                  - title: files-tauri
-                    url: http://100.123.180.46:8090
-                    timeout: 3s
-                  - title: glance
-                    url: http://100.123.180.46:3000
-                    timeout: 3s
                   - title: grinde-viewer
                     url: http://100.123.180.46:8091
                     timeout: 3s
@@ -230,11 +211,8 @@ pages:
               # ist bewusst intern.
               #
               # check-url zeigt auf den Health-Endpoint, wo services.yml einen
-              # nennt — bei rss-reader zwingend, weil / hinter BasicAuth 401
-              # liefert. glance und Global Dashboard haben keinen freien
-              # Health-Pfad, dort IST der 401 der user-auth@file-Middleware
-              # die gesunde Antwort: expect-status macht genau ihn grün und
-              # schlägt an, falls die Auth je verschwindet.
+              # nennt. Kanban/Affiliate/RSS sind aus dieser Gruppe raus — die
+              # laufen seit 2026-08-07 nur noch intern (Mac-mini-Gruppe oben).
               - title: netcup3 · Docker
                 sites:
                   - title: Semaphore
