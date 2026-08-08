@@ -190,16 +190,13 @@ pages:
                     timeout: 5s
                   - title: Affiliate Dashboard
                     # global-dashboard (war kanban2.niclasedge.com) — seit
-                    # 2026-08-07 nur noch intern. 401 = user-auth-Middleware
-                    # des Mini-Traefik, das ist die gesunde Antwort.
+                    # 2026-08-07 nur noch intern, ohne Auth (tailnet-only).
                     url: https://affiliate.lan.niclasedge.com
-                    expect-status: 401
                     timeout: 5s
                   - title: RSS-Reader
                     # rss-reader (war rss.niclasedge.com) — seit 2026-08-07 nur
-                    # noch intern, hinter user-auth. 401 ist gesund.
+                    # noch intern, ohne Auth.
                     url: https://rss.lan.niclasedge.com
-                    expect-status: 401
                     timeout: 5s
 
               - title: Lokal · Docker
