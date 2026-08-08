@@ -50,7 +50,8 @@ func dueChip(t *time.Time) *agendaItem {
 	}
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	badge, red := dueBadge(*t, today)
+	// beads `due_at` is literally a deadline, so the chip is always hard.
+	badge, red := dueBadge(*t, today, true)
 	if red {
 		badge = t.Format("2.1.")
 	}
