@@ -86,7 +86,19 @@ pages:
 
   # The beads task graphs of the repos that track their work in beads
   # (github.com/gastownhall/beads) instead of GitHub issues. Reads the
-  # committed .beads/issues.jsonl export — list only repos that have one.
+  # committed .beads/issues.jsonl export; the Dolt DB itself is binary noms
+  # chunks and unreadable over the API.
+  #
+  # discover: true sweeps every repo the token can see once a day, asking each
+  # one for its .beads/ *directory* — one request that answers both "wird hier
+  # mit beads gearbeitet" and "gibt es einen Export". Ein Repo mit DB, aber ohne
+  # Export erscheint deshalb als solches, statt zu fehlen. Der Preis ist ein
+  # 404 pro Repo pro Tag; ein 404 ist nie gratis, ein 24-Stunden-Takt ist es
+  # praktisch schon (~240 Anfragen gegen 5000/h).
+  #
+  # repos: pinnt darüber hinaus: immer auf der Seite, in dieser Reihenfolge, und
+  # der erste Eintrag ist der Default-Tab. Ein gepinntes Repo ohne beads bleibt
+  # sichtbar — ein Tippfehler soll auffallen, nicht verschwinden.
   - title: Beads
     columns:
       - size: full
@@ -95,9 +107,12 @@ pages:
             title: Beads · Task-Graph
             token-env: GITHUB_PAT
             cache: 5m
+            discover: true
+            discover-interval: 24h
             repos:
               - niclasedge/IaC-Stack
               - niclasedge/affiliate-hub-tools
+              - niclasedge/graphviz-preview
 
   # From here on the config decides. Available widget types: monitor, bookmarks,
   # iframe, html.

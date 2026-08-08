@@ -67,6 +67,11 @@ func TestRenderWidgetBeads(t *testing.T) {
 				Open: 5, Ready: 1, Closed: 1,
 			},
 			{Name: "o/empty", Missing: true},
+			// The other half of "kein Baum hier": beads is in use, only the
+			// export is not committed. The two must not read the same — one is
+			// "nichts zu holen", the other "hier wird gearbeitet, es kommt nur
+			// nichts an".
+			{Name: "o/dbonly", NoExport: true},
 		},
 		ag: &panel.BeadAgenda{Total: 1, Groups: []panel.BeadAgendaGroup{
 			{Title: "Überfällig", Overdue: true, Items: []*panel.Bead{dated}},
@@ -80,7 +85,9 @@ func TestRenderWidgetBeads(t *testing.T) {
 		"wartet auf x-1.1", // the blocker is named, not just a colour
 		"o-blocked",        // and the dot is a hollow amber ring, not a filled grey one
 		"5 offen",
-		"keine Beads-DB", // a listed repo without an export stays visible
+		"keine Beads-DB",       // a pinned repo without beads stays visible
+		"Beads-DB ohne Export", // and a repo with a Dolt DB but no export says so
+		"kein Export",          // in the rail too, where "—" would mean "kein beads"
 		"wayfinder:map",
 		"Repositories", // the planner-style three panes
 		"bd-detail",

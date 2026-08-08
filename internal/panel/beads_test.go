@@ -241,3 +241,153 @@ func TestBeadsUpdate_ConditionalFetch(t *testing.T) {
 		t.Fatalf("after 404: %+v", sec)
 	}
 }
+
+// Discovery: one look at each repo's .beads/ directory sorts it into three
+// answers, and only two of them belong on the page. The pinned repo stays put
+// even though it has nothing — that is what pinning is for.
+func TestBeadsDiscover_ThreeAnswers(t *testing.T) {
+	var listCalls, dirCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/user/repos":
+			listCalls++
+			// Deliberately out of alphabetical order and with the pinned repo
+			// in the middle: the section order must not depend on it.
+			w.Write([]byte(`[{"full_name":"o/zeta"},{"full_name":"o/pinned"},` +
+				`{"full_name":"o/dbonly"},{"full_name":"o/plain"},` +
+				`{"full_name":"o/old","archived":true}]`))
+
+		case strings.HasSuffix(r.URL.Path, "/contents/.beads"):
+			dirCalls++
+			switch {
+			case strings.Contains(r.URL.Path, "/o/zeta/"):
+				w.Write([]byte(`[{"name":"config.yaml","type":"file"},{"name":"issues.jsonl","type":"file"}]`))
+			case strings.Contains(r.URL.Path, "/o/dbonly/"):
+				w.Write([]byte(`[{"name":"config.yaml","type":"file"},{"name":"embeddeddolt","type":"dir"}]`))
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+
+		case strings.HasSuffix(r.URL.Path, "/contents/.beads/issues.jsonl"):
+			// Only o/zeta has one. The pinned repo is fetched before the first
+			// sweep has classified it, and that 404 is exactly what the probe
+			// afterwards explains.
+			if !strings.Contains(r.URL.Path, "/o/zeta/") {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			w.Header().Set("ETag", `"v1"`)
+			w.Write([]byte(beadsFixture))
+
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	t.Setenv("BEADS_TEST_TOKEN", "t")
+	w := &Beads{
+		Repos: []string{"o/pinned"}, TokenEnv: "BEADS_TEST_TOKEN",
+		Discover: true, apiBase: srv.URL,
+	}
+	if err := w.Init(); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	w.Update(context.Background())
+
+	var got []string
+	for _, s := range w.Sections() {
+		got = append(got, s.Name)
+	}
+	// Pinned first in config order, discovered ones after it by name. o/plain
+	// carries no .beads/ and is not pinned, so it does not reach the page at
+	// all — 240 empty tabs would be the alternative. The archived repo never
+	// even got probed.
+	if len(got) != 3 || got[0] != "o/pinned" || got[1] != "o/dbonly" || got[2] != "o/zeta" {
+		t.Fatalf("sections = %v, want [o/pinned o/dbonly o/zeta]", got)
+	}
+	if !w.Sections()[0].Missing || !w.Sections()[0].Pinned {
+		t.Fatalf("the pinned repo without beads must stay visible as Missing: %+v", w.Sections()[0])
+	}
+	if !w.Sections()[1].NoExport || w.Sections()[1].Missing {
+		t.Fatalf("a repo with a Dolt DB but no export is NoExport, not Missing: %+v", w.Sections()[1])
+	}
+	if s := w.Sections()[2]; s.NoExport || s.Missing || s.Open != 5 {
+		t.Fatalf("the exported repo must be parsed in the same round: %+v", s)
+	}
+
+	// A second round inside the interval re-asks nothing: no repo list, no
+	// probes. That is the whole reason the probe result is remembered — a 404
+	// is never free the way a 304 is.
+	beforeList, beforeDir := listCalls, dirCalls
+	w.Update(context.Background())
+	if listCalls != beforeList || dirCalls != beforeDir {
+		t.Fatalf("second round probed again: list %d→%d, dir %d→%d",
+			beforeList, listCalls, beforeDir, dirCalls)
+	}
+
+	// Once the interval passes, the sweep runs again — but skips the repo that
+	// already carries an export, whose conditional fetch is the liveness check.
+	w.lastDiscover = time.Now().Add(-25 * time.Hour)
+	dirCalls = 0
+	w.Update(context.Background())
+	for _, s := range w.Sections() {
+		if s.Name == "o/zeta" && s.Open != 5 {
+			t.Fatalf("the exported repo lost its tree on re-discovery: %+v", s)
+		}
+	}
+	if dirCalls != 3 { // pinned, dbonly, plain — not zeta
+		t.Fatalf("re-discovery made %d directory probes, want 3 (never the exported one)", dirCalls)
+	}
+}
+
+// A failed repo listing must not empty the page: the sections a previous sweep
+// found stay, the error goes on the widget. Same rule the fetch follows for a
+// 500 — old data beside the error beats a blank page.
+func TestBeadsDiscover_ListFailureKeepsSections(t *testing.T) {
+	var fail bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/user/repos":
+			if fail {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Write([]byte(`[{"full_name":"o/r"}]`))
+		case strings.HasSuffix(r.URL.Path, "/contents/.beads"):
+			w.Write([]byte(`[{"name":"issues.jsonl","type":"file"}]`))
+		default:
+			w.Header().Set("ETag", `"v1"`)
+			w.Write([]byte(beadsFixture))
+		}
+	}))
+	defer srv.Close()
+
+	t.Setenv("BEADS_TEST_TOKEN", "t")
+	w := &Beads{TokenEnv: "BEADS_TEST_TOKEN", Discover: true, apiBase: srv.URL}
+	if err := w.Init(); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	w.Update(context.Background())
+	if len(w.Sections()) != 1 || w.Sections()[0].Open != 5 {
+		t.Fatalf("first round: %+v", w.Sections())
+	}
+
+	fail = true
+	w.lastDiscover = time.Now().Add(-25 * time.Hour)
+	w.Update(context.Background())
+	if len(w.Sections()) != 1 || w.Sections()[0].Open != 5 {
+		t.Fatalf("a failed listing emptied the page: %+v", w.Sections())
+	}
+	if w.Err() == nil || !strings.Contains(w.Err().Error(), "401") {
+		t.Fatalf("the listing error must reach the widget, got %v", w.Err())
+	}
+}
+
+// Without discover:, an empty repos: is still a configuration error — the
+// widget would otherwise start up with nothing to show and no way to say why.
+func TestBeadsInit_DiscoverReplacesRepos(t *testing.T) {
+	if err := (&Beads{Discover: true, TokenEnv: "X"}).Init(); err != nil {
+		t.Fatalf("discover: true without repos must be allowed: %v", err)
+	}
+}

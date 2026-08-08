@@ -8,9 +8,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/niclasedge/git-planner-go/internal/config"
 )
 
 // ---------------------------------------------------------------------------
@@ -22,10 +25,17 @@ import (
 // Dolt database itself never reaches GitHub as a readable file, the export is
 // the one surface a viewer may consume (`export.auto` in .beads/config.yaml).
 //
-// The repo list is explicit rather than discovered: probing every repo for
-// .beads/issues.jsonl would pay a 404 per repo per round, and unlike a 304 a
-// 404 is never free. A repo without the file shows up as "keine Beads-DB"
-// instead of disappearing — a typo in the list should be visible, not silent.
+// Repos come from two places. `repos:` pins them: always on the page, in config
+// order, and a pinned repo without beads shows up as "keine Beads-DB" instead of
+// disappearing — a typo in the list should be visible, not silent. `discover:
+// true` adds every repo the token can see that carries a .beads/ directory.
+//
+// Discovery is a probe with a remembered result, the same trade git-planner-ios
+// makes in Repository.beadsState: a 404 is never free the way a 304 is, so
+// asking 240 repos every five minutes is out of the question, while asking them
+// once a day costs nothing worth counting. Repos already known to carry an
+// export are skipped entirely — their conditional export fetch is the liveness
+// check.
 type Beads struct {
 	Base  `yaml:",inline"`
 	Repos []string `yaml:"repos"`
@@ -34,24 +44,43 @@ type Beads struct {
 	TokenEnv string `yaml:"token-env"`
 	// Path within the repo, overridable for a non-default export location.
 	Path string `yaml:"path"`
+	// Discover turns on the repo sweep described above.
+	Discover bool `yaml:"discover"`
+	// DiscoverEvery is how often that sweep repeats; 24h when unset.
+	DiscoverEvery config.Duration `yaml:"discover-interval"`
 
 	token   string
 	credErr error
 	client  *http.Client
 	// apiBase is swapped for a test server in tests; the GitHub API otherwise.
 	apiBase string
-	// state is one entry per configured repo, same order. Fetch bookkeeping
-	// (etag) lives here so a 304 can keep the parsed tree.
+	// state is one entry per rendered repo: the pinned ones in config order
+	// first, discovered ones after them by name. Fetch bookkeeping (etag) lives
+	// here so a 304 can keep the parsed tree.
 	state []*BeadsRepo
+	// pinned is the `repos:` set, for the flag on each section.
+	pinned map[string]bool
+	// lastDiscover is zero until the first sweep; discoverErr is reported as the
+	// widget error without touching the sections a previous sweep found.
+	lastDiscover time.Time
+	discoverErr  string
 }
 
 // BeadsRepo is one repo's parsed tree plus its fetch state.
 type BeadsRepo struct {
 	Name string // owner/repo
-	// Missing means GitHub answered 404: no committed export. Err is any other
-	// fetch or parse failure; old data stays on the page alongside it.
-	Missing bool
-	Err     string
+	// Pinned marks a repo named in `repos:` — it stays on the page whatever the
+	// probe says.
+	Pinned bool
+	// Missing means there is no beads database here at all. NoExport is the
+	// other half of that answer and the reason the probe looks at the directory
+	// rather than at the file: .beads/ exists, so this repo *does* track its work
+	// in beads, but the Dolt database is all there is and no viewer can read it.
+	// Err is any other fetch or parse failure; old data stays on the page
+	// alongside it.
+	Missing  bool
+	NoExport bool
+	Err      string
 
 	Roots  []*Bead
 	Open   int // open + in_progress, the number worth glancing at
@@ -95,6 +124,13 @@ type Bead struct {
 	// this bead). The tree renders them nested underneath — same indent as
 	// children — so the order reads "erst dieses, dann jenes".
 	Waiters []*Bead
+}
+
+// hasExport is "this repo answered with a parsed export at least once". It is
+// what lets a discovery round skip a repo: the conditional fetch already tells
+// us every round whether the file is still there.
+func (r *BeadsRepo) hasExport() bool {
+	return !r.Missing && !r.NoExport && r.etag != ""
 }
 
 func (b *Bead) Blocked() bool { return len(b.BlockedBy) > 0 }
@@ -153,8 +189,8 @@ type beadRecord struct {
 func (b *Beads) Kind() string { return "beads" }
 
 func (b *Beads) Init() error {
-	if len(b.Repos) == 0 {
-		return fmt.Errorf("beads needs at least one repo (owner/repo)")
+	if len(b.Repos) == 0 && !b.Discover {
+		return fmt.Errorf("beads needs at least one repo (owner/repo) or discover: true")
 	}
 	for _, r := range b.Repos {
 		if strings.Count(r, "/") != 1 {
@@ -172,8 +208,10 @@ func (b *Beads) Init() error {
 		b.apiBase = "https://api.github.com"
 	}
 	b.state = make([]*BeadsRepo, len(b.Repos))
+	b.pinned = make(map[string]bool, len(b.Repos))
 	for i, r := range b.Repos {
-		b.state[i] = &BeadsRepo{Name: r}
+		b.state[i] = &BeadsRepo{Name: r, Pinned: true}
+		b.pinned[r] = true
 	}
 
 	// Same contract as the semaphore widget: a missing credential is a banner
@@ -188,15 +226,56 @@ func (b *Beads) Init() error {
 	return nil
 }
 
+// Update fetches before it discovers, so the pinned repos are on the page while
+// a first sweep is still walking a few hundred 404s. Sections found by that
+// sweep are fetched in the same round — otherwise a new repo would sit there
+// empty until the next tick.
 func (b *Beads) Update(ctx context.Context) {
 	if b.credErr != nil {
 		b.done(b.credErr)
 		return
 	}
-	for _, st := range b.state {
-		b.fetchRepo(ctx, st)
+	b.fetchAll(ctx)
+	if b.Discover && b.discoverDue(time.Now()) {
+		b.discover(ctx)
+		b.fetchAll(ctx)
+	}
+	if b.discoverErr != "" {
+		b.done(fmt.Errorf("%s", b.discoverErr))
+		return
 	}
 	b.done(nil)
+}
+
+// fetchAll refreshes every section that can carry an export. Missing and
+// NoExport are probe results, not fetch results — re-asking them here would put
+// back exactly the per-round 404 the discovery interval exists to avoid.
+func (b *Beads) fetchAll(ctx context.Context) {
+	for _, st := range b.Sections() {
+		if st.Missing || st.NoExport {
+			continue
+		}
+		b.fetchRepo(ctx, st)
+	}
+}
+
+// beadsDiscoverInterval is the default sweep period. A day is short enough to
+// notice a new beads repo without being asked and long enough that the 404s it
+// pays disappear against a 5000/h budget.
+const beadsDiscoverInterval = 24 * time.Hour
+
+func (b *Beads) discoverEvery() time.Duration {
+	if d := b.DiscoverEvery.Std(); d > 0 {
+		return d
+	}
+	return beadsDiscoverInterval
+}
+
+func (b *Beads) discoverDue(now time.Time) bool {
+	b.mu.RLock()
+	last := b.lastDiscover
+	b.mu.RUnlock()
+	return last.IsZero() || now.Sub(last) >= b.discoverEvery()
 }
 
 // Sections is what the template ranges over. The slice itself is fixed at
@@ -239,10 +318,15 @@ func (b *Beads) fetchRepo(ctx context.Context, st *BeadsRepo) {
 		b.setErr(st, "")
 		return
 	case http.StatusNotFound:
+		// With discovery on, this repo only got here because a probe saw its
+		// .beads/ directory — so a vanished export is "DB ohne Export", not
+		// "kein beads". Without discovery there is nothing to tell the two
+		// apart, and the older, blunter answer stands.
 		b.mu.Lock()
-		st.Missing, st.Err = true, ""
+		st.Missing, st.NoExport, st.Err = !b.Discover, b.Discover, ""
 		st.Roots, st.ReadyList, st.All = nil, nil, nil
 		st.Open, st.Ready, st.Closed = 0, 0, 0
+		st.etag = ""
 		b.mu.Unlock()
 		return
 	case http.StatusOK:
@@ -269,6 +353,213 @@ func (b *Beads) setErr(st *BeadsRepo, msg string) {
 	b.mu.Lock()
 	st.Err = msg
 	b.mu.Unlock()
+}
+
+// ---------------------------------------------------------------------------
+// discovery — which repos track their work in beads at all
+// ---------------------------------------------------------------------------
+
+// beadsProbe is what one look at a repo's .beads/ directory can tell us.
+type beadsProbe int
+
+const (
+	beadsUnknown  beadsProbe = iota // the request failed; say nothing
+	beadsNone                       // no .beads/ — this repo does not use beads
+	beadsDBOnly                     // .beads/ exists, but no committed export
+	beadsExported                   // .beads/ exists and carries the export
+)
+
+// discover rebuilds the section list: pinned repos in config order, then every
+// discovered repo that carries a .beads/ directory, by name.
+//
+// A failed listing keeps the previous sections rather than emptying the page —
+// the same rule the fetch follows for a 500.
+func (b *Beads) discover(ctx context.Context) {
+	names, err := b.listRepos(ctx)
+	if err != nil {
+		b.mu.Lock()
+		b.discoverErr = "Repo-Discovery: " + err.Error()
+		b.mu.Unlock()
+		return
+	}
+
+	b.mu.RLock()
+	prev := make(map[string]*BeadsRepo, len(b.state))
+	for _, st := range b.state {
+		prev[st.Name] = st
+	}
+	b.mu.RUnlock()
+
+	// Pinned first and in config order: the first section is the page's default
+	// tab, and a tab that reorders itself between refreshes is not a tab.
+	order := append([]string{}, b.Repos...)
+	rest := make([]string, 0, len(names))
+	for _, n := range names {
+		if !b.pinned[n] {
+			rest = append(rest, n)
+		}
+	}
+	sort.Strings(rest)
+	order = append(order, rest...)
+
+	next := make([]*BeadsRepo, 0, len(order))
+	for _, name := range order {
+		st := prev[name]
+		if st == nil {
+			st = &BeadsRepo{Name: name}
+		}
+		st.Pinned = b.pinned[name]
+
+		if st.hasExport() {
+			next = append(next, st) // its conditional fetch is the check
+			continue
+		}
+
+		switch b.probeBeadsDir(ctx, name) {
+		case beadsExported:
+			b.mu.Lock()
+			st.Missing, st.NoExport = false, false
+			b.mu.Unlock()
+			next = append(next, st)
+		case beadsDBOnly:
+			b.mu.Lock()
+			st.Missing, st.NoExport = false, true
+			st.Roots, st.ReadyList, st.All = nil, nil, nil
+			st.Open, st.Ready, st.Closed = 0, 0, 0
+			st.etag = ""
+			b.mu.Unlock()
+			next = append(next, st)
+		case beadsNone:
+			b.mu.Lock()
+			st.Missing, st.NoExport = true, false
+			st.Roots, st.ReadyList, st.All = nil, nil, nil
+			st.Open, st.Ready, st.Closed = 0, 0, 0
+			st.etag = ""
+			b.mu.Unlock()
+			if st.Pinned {
+				next = append(next, st) // a typo must stay visible
+			}
+		default: // beadsUnknown — keep whatever we already believed
+			if st.Pinned || prev[name] != nil {
+				next = append(next, st)
+			}
+		}
+	}
+
+	b.mu.Lock()
+	b.state = next
+	b.lastDiscover = time.Now()
+	b.discoverErr = ""
+	b.mu.Unlock()
+}
+
+// probeBeadsDir asks for the *directory* listing, not the export. One request
+// then answers both questions at once: does this repo keep a beads (Dolt)
+// database, and is there something a viewer can read? Probing the file alone
+// would collapse "kein beads" and "beads ohne Export" into the same 404, and
+// those two want different words on the page.
+func (b *Beads) probeBeadsDir(ctx context.Context, repo string) beadsProbe {
+	dir, file := path.Split(b.Path)
+	dir = strings.TrimSuffix(dir, "/")
+	if dir == "" {
+		// An export configured at the repo root has no directory to ask about.
+		return beadsUnknown
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, b.apiBase+"/repos/"+repo+"/contents/"+dir, nil)
+	if err != nil {
+		return beadsUnknown
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Authorization", "Bearer "+b.token)
+	req.Header.Set("User-Agent", "git-planner-go/beads")
+
+	resp, err := b.client.Do(req)
+	if err != nil {
+		return beadsUnknown
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusNotFound:
+		io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<10))
+		return beadsNone
+	case http.StatusOK:
+	default:
+		io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<10))
+		return beadsUnknown
+	}
+
+	var entries []struct {
+		Name string `json:"name"`
+		Type string `json:"type"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&entries); err != nil {
+		return beadsUnknown
+	}
+	for _, e := range entries {
+		if e.Name == file && e.Type == "file" {
+			return beadsExported
+		}
+	}
+	return beadsDBOnly
+}
+
+// beadsRepoPages caps discovery at 300 repos, the same ceiling gh.discoverRepos
+// uses. Past that, name repos explicitly.
+const beadsRepoPages = 3
+
+// listRepos returns every non-archived repo the token can see, as owner/repo.
+//
+// It pages with an explicit &page=N rather than following the Link header, for
+// the reason gh.discoverRepos records: GitHub sends no Link on a 304, so a
+// header-driven chain silently shrinks to the first hundred once a cache is warm.
+func (b *Beads) listRepos(ctx context.Context) ([]string, error) {
+	const perPage = 100
+	var out []string
+
+	for page := 1; page <= beadsRepoPages; page++ {
+		url := fmt.Sprintf("%s/user/repos?per_page=%d&page=%d&sort=pushed&direction=desc"+
+			"&affiliation=owner,collaborator,organization_member", b.apiBase, perPage, page)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Accept", "application/vnd.github+json")
+		req.Header.Set("Authorization", "Bearer "+b.token)
+		req.Header.Set("User-Agent", "git-planner-go/beads")
+
+		resp, err := b.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<10))
+			resp.Body.Close()
+			return nil, fmt.Errorf("GET /user/repos: HTTP %d", resp.StatusCode)
+		}
+
+		var batch []struct {
+			FullName string `json:"full_name"`
+			Archived bool   `json:"archived"`
+			Disabled bool   `json:"disabled"`
+		}
+		err = json.NewDecoder(io.LimitReader(resp.Body, 8<<20)).Decode(&batch)
+		resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("GET /user/repos: %w", err)
+		}
+		for _, r := range batch {
+			if r.Archived || r.Disabled || strings.Count(r.FullName, "/") != 1 {
+				continue
+			}
+			out = append(out, r.FullName)
+		}
+		if len(batch) < perPage {
+			break
+		}
+	}
+	return out, nil
 }
 
 // URL is the repo on GitHub, for the section heading.

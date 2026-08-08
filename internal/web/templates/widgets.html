@@ -209,9 +209,9 @@
     <div class="pane-header">Repositories <span class="ph-n">{{ len $secs }}</span></div>
     <div class="repo-list">
       {{ range $secs }}
-      <a class="repo-item bd-repo{{ if eq .Name $first }} active{{ end }}{{ if .Missing }} missing{{ end }}"
+      <a class="repo-item bd-repo{{ if eq .Name $first }} active{{ end }}{{ if or .Missing .NoExport }} missing{{ end }}"
          href="#" data-repo="{{ .Name }}" data-open="{{ .Open }}" data-ready="{{ .Ready }}" data-closed="{{ .Closed }}"
-         title="{{ .Name }}{{ if .Missing }} — keine Beads-DB{{ else }} — {{ .Ready }} ready, {{ .Open }} offen, {{ .Closed }} erledigt{{ end }}">
+         title="{{ .Name }}{{ if .Missing }} — keine Beads-DB{{ else if .NoExport }} — Beads-DB ohne committeten Export{{ else }} — {{ .Ready }} ready, {{ .Open }} offen, {{ .Closed }} erledigt{{ end }}">
         <div class="ri-top">
           {{/* .Short, not .Name: the owner prefix is the same on every row of a
                personal account, so in a 200px rail "niclasedge/IaC-Stack" and
@@ -228,6 +228,10 @@
         <div class="ri-nums">
           {{ if .Missing }}
           <span class="count">—</span>
+          {{ else if .NoExport }}
+          {{/* Nicht „—“ wie bei einem Repo ohne beads: dort gibt es nichts,
+               hier gibt es etwas und es ist nur nicht abholbar. */}}
+          <span class="count">kein Export</span>
           {{ else }}
           {{/* Ready first and in words: it is the number that answers "gibt es
                hier was zu tun". Open follows as context, closed only in the
@@ -246,7 +250,7 @@
          class, so the existing click handler drives it unchanged. */}}
     <div class="bd-tabs">
       {{ range $secs }}
-      <a class="bd-tab bd-repo{{ if eq .Name $first }} active{{ end }}{{ if .Missing }} missing{{ end }}"
+      <a class="bd-tab bd-repo{{ if eq .Name $first }} active{{ end }}{{ if or .Missing .NoExport }} missing{{ end }}"
          href="#" data-repo="{{ .Name }}" data-open="{{ .Open }}" title="{{ .Name }}">{{ .Short }}{{ if .Ready }} <span class="n">{{ .Ready }}</span>{{ end }}</a>
       {{ end }}
     </div>
@@ -284,8 +288,17 @@
       {{ if .Missing }}
       <div class="empty plain">
         <b>keine Beads-DB</b>
-        <p>Dieses Repo trägt kein <code>.beads/issues.jsonl</code>. Das Widget liest den committeten Export über die GitHub-API — die Dolt-DB selbst bleibt tabu.</p>
+        <p>Dieses Repo trägt kein <code>.beads/</code>. Das Widget liest den committeten Export über die GitHub-API — die Dolt-DB selbst bleibt tabu.</p>
         <p><code>bd init</code>, dann den Auto-Export committen.</p>
+      </div>
+      {{ else if .NoExport }}
+      {{/* Der Unterschied zu „keine Beads-DB“ ist der ganze Grund, warum die
+           Discovery das Verzeichnis abfragt und nicht die Datei: hier wird
+           gearbeitet, es kommt nur nichts an. Deshalb der genaue Handgriff. */}}
+      <div class="empty plain">
+        <b>Beads-DB ohne Export</b>
+        <p>Dieses Repo hat eine Dolt-DB unter <code>.beads/</code>, aber kein committetes <code>.beads/issues.jsonl</code>. Die DB selbst ist über die GitHub-API nicht lesbar — sie sind binäre noms-Chunks.</p>
+        <p>In <code>.beads/config.yaml</code>:<br><code>export:</code><br><code>&nbsp;&nbsp;auto: true</code><br><code>&nbsp;&nbsp;path: issues.jsonl</code><br><code>&nbsp;&nbsp;git-add: true</code><br>dann <code>bd export -o .beads/issues.jsonl</code> committen.</p>
       </div>
       {{ else }}
       {{ with .Err }}<div class="banner">{{ . }}</div>{{ end }}
@@ -420,7 +433,7 @@
   {{ else }}
   <div class="empty plain">
     <b>keine Repos konfiguriert</b>
-    <p>Das Widget liest die Liste aus <code>repos:</code> unter seinem <code>type: beads</code> in <code>config.yaml</code>.</p>
+    <p>Das Widget pinnt die Repos aus <code>repos:</code> unter seinem <code>type: beads</code> in <code>config.yaml</code>. Mit <code>discover: true</code> sucht es zusätzlich jedes Repo des Tokens einmal täglich nach einem <code>.beads/</code>-Verzeichnis ab.</p>
   </div>
   {{ end }}
 </div>
