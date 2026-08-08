@@ -188,6 +188,19 @@ pages:
                     # 303 auf /login ist die gesunde Antwort (App-Auth).
                     url: https://kanban.lan.niclasedge.com
                     timeout: 5s
+                  - title: Affiliate Dashboard
+                    # global-dashboard (war kanban2.niclasedge.com) — seit
+                    # 2026-08-07 nur noch intern. 401 = user-auth-Middleware
+                    # des Mini-Traefik, das ist die gesunde Antwort.
+                    url: https://affiliate.lan.niclasedge.com
+                    expect-status: 401
+                    timeout: 5s
+                  - title: RSS-Reader
+                    # rss-reader (war rss.niclasedge.com) — seit 2026-08-07 nur
+                    # noch intern, hinter user-auth. 401 ist gesund.
+                    url: https://rss.lan.niclasedge.com
+                    expect-status: 401
+                    timeout: 5s
 
               - title: Lokal · Docker
                 sites:
@@ -234,14 +247,6 @@ pages:
                   - title: ntfy
                     url: https://ntfy.niclasedge.com
                     public-url: https://ntfy.niclasedge.com
-                  - title: Global Dashboard
-                    url: https://kanban2.niclasedge.com
-                    expect-status: 401
-                    public-url: https://kanban2.niclasedge.com
-                  - title: RSS-Reader
-                    url: https://rss.niclasedge.com
-                    check-url: https://rss.niclasedge.com/healthz
-                    public-url: https://rss.niclasedge.com
                   - title: Family-Tree
                     url: https://family.niclasedge.com
                     check-url: https://family.niclasedge.com/api/health
