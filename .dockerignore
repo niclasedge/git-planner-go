@@ -1,0 +1,20 @@
+# Secrets never enter the build context — .env is mounted at runtime instead.
+.env
+.env.*
+!.env.example
+
+.git
+.github
+data/
+logs/
+knowledge/
+docs/
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# Local build output, would be copied over the one the image builds itself.
+/git-planner
+/dist/
+/bin/

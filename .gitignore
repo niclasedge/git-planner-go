@@ -1,0 +1,34 @@
+# Secrets — never commit. .env.example is the tracked template.
+.env
+.env.*
+!.env.example
+
+# Local cache / state
+*.db
+*.db-shm
+*.db-wal
+/cache/
+/data/
+
+# Build output
+/git-planner
+/dist/
+/bin/
+web/node_modules/
+
+# Logs and measurements
+/logs/
+*.log
+
+# Editor / OS / agent tooling
+.DS_Store
+.idea/
+.vscode/*
+.claude/
+.impeccable/
+.beads/
+
+# Go
+*.test
+*.out
+/vendor/

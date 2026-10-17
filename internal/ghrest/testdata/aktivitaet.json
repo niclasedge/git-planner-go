@@ -1,0 +1,26 @@
+[
+  {
+    "id": 45063122181,
+    "before": "dcf7be6a49f5b6cdd6298a6e856ef950d2337bba",
+    "after": "6d49131fec6ac4318e7c0a389862db38df0d4e39",
+    "ref": "refs/heads/claude/upbeat-planck-cxrti4",
+    "timestamp": "2026-09-30T17:58:58Z",
+    "activity_type": "push",
+    "actor": {
+      "login": "work-account",
+      "id": 282800613
+    }
+  },
+  {
+    "id": 45063114355,
+    "before": "8b94dcac2954625b3f99960cd3d8e2385e39b168",
+    "after": "6d49131fec6ac4318e7c0a389862db38df0d4e39",
+    "ref": "refs/heads/main",
+    "timestamp": "2026-09-30T17:58:51Z",
+    "activity_type": "pr_merge",
+    "actor": {
+      "login": "work-account",
+      "id": 282800613
+    }
+  }
+]

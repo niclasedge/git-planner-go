@@ -1,0 +1,49 @@
+{
+  "repo": "example-org/git-planner",
+  "jetzt": "2026-09-28",
+  "hinweis": "Erfundenes, aber realistisches Szenario. Alle vier Entwuerfe zeichnen genau diese Daten.",
+  "verlauf": [
+    {"nr": 97, "titel": "Docker-Betrieb lokal und netcup", "change": "docker-betrieb", "erledigt": "2026-09-27", "map": null},
+    {"nr": 83, "titel": "PR-Lebenslauf Stufenleiste", "change": "pr-lebenslauf", "erledigt": "2026-09-26", "map": 70},
+    {"nr": 79, "titel": "Branch oder PR anlegen", "change": "pr-anlegen", "erledigt": "2026-09-25", "map": 70},
+    {"nr": 76, "titel": "PR-Reviews anzeigen", "change": "pr-reviews", "erledigt": "2026-09-24", "map": 70},
+    {"nr": 74, "titel": "PR-Checks in der Zeile", "change": "pr-checks", "erledigt": "2026-09-23", "map": 70},
+    {"nr": 56, "titel": "Archivliste der Changes", "change": "archiv-liste", "erledigt": "2026-09-22", "map": null},
+    {"nr": 50, "titel": "Issue-Branches verknuepfen", "change": "issue-branches", "erledigt": "2026-09-20", "map": null},
+    {"nr": 49, "titel": "Karte: Issues ohne Sub-Issues", "change": "karte-issues", "erledigt": "2026-09-19", "map": 36},
+    {"nr": 48, "titel": "Liste nach Abhaengigkeiten", "change": "liste-abhaengigkeiten", "erledigt": "2026-09-17", "map": null},
+    {"nr": 45, "titel": "Sync-Status sichtbar", "change": "sync-status", "erledigt": "2026-09-16", "map": null}
+  ],
+  "aktiv": [
+    {"nr": 101, "titel": "Repo-Karte als Folge", "change": "repo-karte-folge", "branch": "change/repo-karte-folge", "stufe": "gate2", "aufgaben": [2, 7], "pr": null, "map": 36, "letzter_commit": "vor 2 h"},
+    {"nr": 98, "titel": "Netz-Schreiben mit Retry", "change": "netz-retry", "branch": "change/netz-retry", "stufe": "im_pr", "aufgaben": [6, 6], "pr": 99, "checks": "rot", "map": null, "letzter_commit": "vor 5 h"},
+    {"nr": 95, "titel": "Heute-Logbuch gruppieren", "change": "logbuch-gruppen", "branch": "change/logbuch-gruppen", "stufe": "gate1", "aufgaben": [0, 5], "pr": null, "map": null, "letzter_commit": "vor 1 T"}
+  ],
+  "klaeren": [
+    {"nr": 88, "titel": "Token-Quelle fuer Forks?", "frage": "Fork-Repos: PAT des Forks oder des Upstreams?", "wer": "alex", "seit_tagen": 6, "blockiert_direkt": [102, 104], "hebel": 4, "prio": 1},
+    {"nr": 91, "titel": "Archiv-Format festlegen", "frage": "Archiv als JSON-Lines oder Ordner je Monat?", "wer": "alex", "seit_tagen": 3, "blockiert_direkt": [106], "hebel": 2, "prio": 1},
+    {"nr": 93, "titel": "Rang-Regel bei Gleichstand", "frage": "Aelteres oder zuletzt aktives Issue zuerst?", "wer": "offen", "seit_tagen": 1, "blockiert_direkt": [], "hebel": 0, "prio": 2}
+  ],
+  "naechste": [
+    {"nr": 102, "titel": "Fork-Repos in der Leiste", "wartet_auf": [88], "map": 60, "bereit": false},
+    {"nr": 103, "titel": "Karte: Hebel-Spalte", "wartet_auf": [101], "map": 36, "bereit": false},
+    {"nr": 104, "titel": "Token-Rotation melden", "wartet_auf": [88], "map": 60, "bereit": false},
+    {"nr": 105, "titel": "Logbuch-Export Markdown", "wartet_auf": [95], "map": null, "bereit": false},
+    {"nr": 106, "titel": "Archiv komprimieren", "wartet_auf": [91], "map": null, "bereit": false},
+    {"nr": 107, "titel": "Fork-Sync im Hintergrund", "wartet_auf": [102], "map": 60, "bereit": false},
+    {"nr": 108, "titel": "Retry-Zaehler anzeigen", "wartet_auf": [98], "map": null, "bereit": false},
+    {"nr": 109, "titel": "Archiv durchsuchen", "wartet_auf": [106], "map": null, "bereit": false},
+    {"nr": 110, "titel": "Dark-Mode Karte", "wartet_auf": [], "map": 36, "bereit": true},
+    {"nr": 111, "titel": "Fork-Konflikte loesen", "wartet_auf": [107, 104], "map": 60, "bereit": false}
+  ],
+  "maps": {
+    "36": "Repo-Karte",
+    "60": "Fork-Unterstuetzung",
+    "70": "PR-Lebenslauf"
+  },
+  "legende": {
+    "hebel": "Anzahl Issues, die transitiv an diesem Blocker haengen",
+    "prio": "1 = offene Frage, die mindestens ein Issue blockiert; 2 = offene Frage ohne Nachfolger",
+    "stufe": "gate1 = Plan steht, gate2 = roter Test steht, im_pr = PR offen"
+  }
+}

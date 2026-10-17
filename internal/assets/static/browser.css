@@ -1,0 +1,991 @@
+/* ============================================================
+   knowledge browser — 3-pane (nav · list · detail)
+   builds on dash.css tokens & .term chrome
+   ============================================================ */
+
+.mp{
+  display:grid;
+  grid-template-columns:280px 1fr;
+  height:100vh;
+  min-height:0;
+}
+.mp.is-overview{ grid-template-columns:1fr; }
+.mp.is-overview .mp-list{ display:none; }
+/* Reports ist der einzige Master/Detail-Aufbau mit einer MITWACHSENDEN Liste
+   (gkp-o71). Die 280px der anderen Ansichten reichen hier nicht: eine Zeile
+   traegt Id, Titel, Status und Alter, und der Titel ist der Teil, an dem man
+   den Bead erkennt. 1fr zu 2fr ist das gewuenschte Verhaeltnis; die Liste
+   bekommt eine Untergrenze, damit sie auf schmalen Fenstern nicht auf die
+   Breite einer Id zusammenfaellt. */
+.mp.is-reports{ grid-template-columns:minmax(280px, 1fr) 2fr; }
+
+/* shell layout — header is now in .hd, kn-tabs removed */
+.kn-shell{ height:100dvh; display:flex; flex-direction:column; min-height:0; }
+.kn-shell > .kn-body{ flex:1; min-height:0; }
+
+.mp-list, .mp-detail{ overflow:auto; min-width:0; }
+/* mp-nav now lives inside .pane-side sidebar (no own border-right) */
+#mp-nav{ padding:8px 8px 0; }
+.mp-list{ border-right:1px solid var(--line-2); background:var(--panel); }
+.mp-detail{ background:var(--bg-grid); }
+
+/* scrollbars */
+.mp-nav::-webkit-scrollbar, .mp-list::-webkit-scrollbar, .mp-detail::-webkit-scrollbar{ width:9px; height:9px; }
+.mp ::-webkit-scrollbar-thumb{ background:var(--line-2); border-radius:5px; border:2px solid transparent; background-clip:padding-box; }
+.mp ::-webkit-scrollbar-thumb:hover{ background:var(--line-3); }
+
+/* ---- nav (col 1) ---- */
+/* Der Gruppentitel steht um 90 Grad gedreht in einer schmalen Rinne links neben
+   seinen Eintraegen, nicht als eigene Zeile darueber (gkp-ar7.23). Absolut
+   gesetzt kostet er auch keine Hoehe - die Gruppe ist so hoch wie ihre
+   Eintraege. --navgh ist nur die Reserve, damit zwei Titel bei kurzen Gruppen
+   nicht uebereinander geraten; ein gedrehtes Wort ist rund 40px hoch. */
+#mp-nav{ --navgut:19px; --navgh:44px; }
+.nav-gd{ position:relative; padding-left:var(--navgut); min-height:var(--navgh); }
+/* overflow:hidden ist die Notbremse: ein Titel, der laenger ist als seine
+   Gruppe hoch, wuerde sonst in die Rinne der naechsten Gruppe ragen und sich
+   mit deren Titel ueberlagern. Abgeschnitten ist haesslich, uebereinander ist
+   unlesbar. */
+.nav-gl{
+  position:absolute; left:0; top:0; bottom:0; width:calc(var(--navgut) - 1px);
+  display:flex; align-items:flex-start; justify-content:center; padding:7px 0 4px;
+  border-right:1px solid var(--line); overflow:hidden;
+}
+.nav-gt{
+  writing-mode:vertical-rl; transform:rotate(180deg); white-space:nowrap;
+  font-size:8.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--faint);
+}
+.nav-gb{ padding:2px 0 5px; }
+.nav-i{
+  display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px;
+  padding:8px 11px; border-radius:7px; cursor:pointer; user-select:none; transition:background .1s;
+}
+.nav-i:hover{ background:var(--panel-2); }
+.nav-i .nn{ font-size:12.5px; color:var(--fg-2); font-weight:500; }
+.nav-i .nc{ font-size:10px; color:var(--faint); font-variant-numeric:tabular-nums; }
+.nav-i.is-active{ background:var(--panel-2); }
+.nav-i.is-active .nn{ color:var(--fg); }
+.nav-i.is-empty{ opacity:.45; }
+
+/* ---- list (col 2) ---- */
+.list-head{
+  position:sticky; top:0; z-index:2; background:var(--panel);
+  border-bottom:1px solid var(--line); padding:11px 13px 9px;
+}
+.list-head .lt{ display:flex; align-items:baseline; gap:8px; margin-bottom:9px; }
+.list-head .lt b{ font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--fg); }
+.list-head .lt .lc{ font-size:10.5px; color:var(--faint); }
+.list-head .lt .ls{ margin-left:auto; font-size:10px; color:var(--dim); white-space:nowrap; }
+
+/* big-number duo (used in overview tiles) */
+.pane .duo{ display:flex; gap:18px; flex-wrap:wrap; }
+.pane .duo .n{ font-size:22px; font-weight:700; line-height:1; }
+.pane .duo .n small{ display:block; font-size:9.5px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin-top:5px; }
+.filter{
+  display:flex; align-items:center; gap:7px; background:var(--inset);
+  border:1px solid var(--line-2); border-radius:6px; padding:5px 9px;
+}
+.filter span{ color:var(--faint); font-size:11px; }
+.filter input{
+  background:none; border:0; outline:none; color:var(--fg); font:inherit; font-size:11.5px; width:100%;
+}
+.filter input::placeholder{ color:var(--faint); }
+
+/* Der Status-Schalter der Reports-Liste (gkp-e58). Steht unter dem Textfilter
+   und nicht daneben: nebeneinander bleiben von 280px Spalte weder fuer die
+   Sucheingabe noch fuer die Beschriftung genug uebrig, und der Zaehler rechts
+   waere das erste, was wegfaellt. */
+.rp-zu{
+  display:flex; align-items:center; gap:7px; margin-top:7px;
+  font-size:11px; color:var(--dim); cursor:pointer; user-select:none;
+}
+.rp-zu:hover{ color:var(--fg-2); }
+.rp-zu input{ flex:none; width:13px; height:13px; margin:0; cursor:pointer; accent-color:var(--cyan); }
+/* Die Zahl der ausgeblendeten Beads. <em> traegt hier keine Betonung, sondern
+   den Zaehler — kursiv waere hier Zierrat, also abgeschaltet. */
+.rp-zu em{
+  margin-left:auto; font-style:normal; font-family:var(--mono); font-size:10px;
+  color:var(--faint); font-variant-numeric:tabular-nums;
+}
+
+.li{
+  display:flex; align-items:center; justify-content:space-between; gap:14px;
+  padding:9px 13px; cursor:pointer; border-bottom:1px solid var(--line);
+  transition:background .1s;
+}
+.li > div:first-child{ min-width:0; }
+.li:hover{ background:var(--panel-2); }
+.li.is-active{ background:var(--panel-3); box-shadow:inset 2px 0 0 var(--cyan); }
+.li .li-n{ font-size:12.5px; color:var(--fg); font-weight:500; word-break:break-word; }
+.li.is-active .li-n{ color:var(--fg-strong); }
+.li .li-s{ font-size:10px; color:var(--dim); margin-top:2px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.li .li-ix{ color:var(--faint); font-size:11px; font-variant-numeric:tabular-nums; flex:none; }
+/* leading status dot — kept for task/decision types; hidden for skill/agent/know/lesson/memory */
+.li .li-dot{ margin-top:0; flex:none; align-self:center; }
+/* right-aligned init-load token count (skills, agents) */
+.li .li-tok{
+  flex:none; text-align:right; white-space:nowrap;
+  font-variant-numeric:tabular-nums; font-size:12px; font-weight:600; color:var(--fg-2);
+}
+.li .li-tok small{ display:block; font-size:8.5px; font-weight:500; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--faint); margin-top:1px; }
+.li:hover .li-tok{ color:var(--cyan); }
+.li[hidden]{ display:none; }
+.li-empty{ padding:24px 14px; color:var(--faint); font-style:italic; font-size:11.5px; }
+
+/* collapsed raw-file section in skill/agent detail */
+.dt-raw{ border:1px solid var(--line); border-radius:9px; overflow:hidden; }
+.dt-raw > summary{
+  list-style:none; cursor:pointer; display:flex; align-items:center; gap:9px;
+  padding:11px 14px; background:var(--panel); user-select:none;
+}
+.dt-raw > summary::-webkit-details-marker{ display:none; }
+.dt-raw > summary:hover{ background:var(--panel-2); }
+.dt-raw > summary .tw{ color:var(--dim); font-size:11px; transition:transform .15s; }
+.dt-raw[open] > summary .tw{ transform:rotate(90deg); color:var(--green); }
+.dt-raw > summary .rt{ font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--fg-2); font-weight:600; }
+.dt-raw > summary .rc{ font-size:10.5px; color:var(--faint); margin-left:auto; }
+.dt-raw pre{ margin:0; padding:16px 18px; background:var(--inset);
+  border-top:1px solid var(--line); font-size:12px; line-height:1.6; color:var(--fg-2);
+  overflow:auto; white-space:pre-wrap; max-height:340px; }
+
+/* ---- detail (col 3) ---- */
+.dt{ padding:22px 26px 30px; max-width:760px; }
+.dt-eyebrow{ font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:9px; }
+.dt h2{ font-size:21px; font-weight:700; margin:0 0 3px; letter-spacing:-.01em; color:var(--fg); word-break:break-word; }
+.dt h2 .mono{ font-family:var(--mono); }
+.dt .dt-badges{ display:flex; flex-wrap:wrap; gap:6px; margin:11px 0 18px; }
+.dt .dt-desc{ color:var(--fg-2); font-size:13px; line-height:1.7; margin:0 0 22px; max-width:62ch; text-wrap:pretty; }
+.dt .dt-desc code{ color:var(--green); }
+
+.dt-meta{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px;
+  background:var(--line); border:1px solid var(--line); border-radius:9px; overflow:hidden; margin-bottom:22px;
+}
+.dt-meta .mc{ background:var(--panel); padding:11px 14px; }
+.dt-meta .mc .ml{ font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin-bottom:6px; }
+.dt-meta .mc .mv{ font-size:13px; color:var(--fg); font-variant-numeric:tabular-nums; word-break:break-word; }
+.dt-meta .mc .mv code{ color:var(--green); font-size:12px; }
+
+.dt-sec{ margin-bottom:22px; }
+.dt-sec > .sh{
+  font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim);
+  display:flex; align-items:center; gap:8px; margin:0 0 10px;
+  padding-bottom:7px; border-bottom:1px solid var(--line);
+}
+.dt-sec > .sh .ct{ color:var(--faint); }
+.dt-sec .prose{ color:var(--fg-2); font-size:12.5px; line-height:1.65; max-width:62ch; }
+
+.dt-empty{ color:var(--faint); font-style:italic; }
+
+/* overview pane keeps the tmux grid full-bleed */
+.mp-detail .ov-wrap{ padding:0; }
+.mp-detail .ov-head{ display:flex; align-items:baseline; gap:12px; padding:14px 18px; border-bottom:1px solid var(--line); flex-wrap:wrap; background:var(--panel); }
+.mp-detail .ov-head h2{ font-size:14px; font-weight:700; margin:0; }
+.mp-detail .ov-head .dc{ color:var(--faint); font-size:11.5px; }
+.mp-detail .ov-head .hint{ margin-left:auto; color:var(--dim); font-size:10.5px; }
+.mp-detail .ov-head .hint b{ color:var(--cyan); }
+
+/* ---- Reports (demo-axk.4): Repo > Map > Sub-bead > Entries ---- */
+.rp-gap-warn{
+  background:var(--red-d); color:var(--red); border:1px solid color-mix(in oklch,var(--red) 30%,var(--line));
+  border-radius:7px; padding:8px 12px; font-size:11.5px; line-height:1.5;
+}
+.rp-gap-warn code{ color:inherit; }
+
+/* ---- Reports-Liste: Beads nach Map gruppiert (gkp-o71) ----
+   Baut auf .li / .li-group der anderen Listen auf, damit eine Zeile hier
+   aussieht wie eine Zeile dort. Zwei Abweichungen, beide inhaltlich:
+   die Gruppenzeile ist WAEHLBAR (sie fuehrt zur Map mit Plan-Graph und
+   Zahlen, die es sonst nirgends mehr gaebe), und eine Bead-Zeile traegt
+   eine Abzeichenzeile statt eines Fliesstext-Untertitels. */
+.rp-li-map{
+  cursor:pointer; display:flex; align-items:baseline; gap:8px;
+  transition:background .1s;
+}
+/* Die Gruppenzeile klebt UNTER der Kopfzeile der Liste, nicht am Fensterrand.
+   .li-group bringt aus der Dateiliste top:0 mit; dort steht keine sticky
+   .list-head darueber, hier schon — und die deckte beim Scrollen Gruppenzeile
+   UND ersten Bead zu (gemessen: Gruppenzeile bei viewport-top 0, Unterkante
+   der Kopfzeile bei 79). --rp-headh setzt rpBaueListe aus der gemessenen
+   Kopfhoehe, weil die von Titel, Zaehler und Worktree-Zeile abhaengt.
+   Drei Klassen tief, weil die Basisregel `.mp-list .li-group{top:0}` inline in
+   render_page.go steht und damit NACH dieser Datei geladen wird — bei gleicher
+   Spezifitaet gewinnt sonst die spaetere. */
+.mp.is-reports .mp-list .rp-li-map{ top:var(--rp-headh, 78px); }
+.rp-li-map:hover{ background:var(--panel-2); }
+.rp-li-map.is-active{ color:var(--fg-strong); background:var(--panel-3); box-shadow:inset 2px 0 0 var(--amber); }
+.rp-li-map .rp-li-mt{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Die Zahlen der Map bleiben lesbar, wenn der Titel gekuerzt wird: sie sind
+   der Grund, die Gruppenzeile ueberhaupt anzusteuern. */
+.rp-li-map .rp-li-mc{ flex:none; letter-spacing:0; text-transform:none; color:var(--faint); font-variant-numeric:tabular-nums; }
+/* Zwei Zeilen, nicht vier: Id und Titel oben, Abzeichen unten. Der Titel wird
+   gekuerzt statt umgebrochen — bei 66 Beads entscheidet die Zeilenzahl je
+   Eintrag darueber, wie viel Liste man ueberhaupt sieht. Der volle Titel steht
+   im title-Attribut. */
+/* Die Einrueckung der Unteraufgaben (gkp-wsk). --rp-t ist die Ebene, gedeckelt
+   in browser.js (RP_TIEFE_MAX); hier steht nur die Schrittweite.
+
+   15px, und der Deckel bei Ebene 4: gemessen an einem kuenstlich sechs Ebenen
+   tiefen Baum bei 1700px Fensterbreite, also 556px Listenspalte. Die Zeile
+   traegt unten Balken (64px) + Prozent (34px) + bis zu fuenf Abzeichen; ab etwa
+   Ebene 5 faellt das letzte Abzeichen aus der Zeile, ab Ebene 7 wuerde der
+   Titel auf die Haelfte der Spalte schrumpfen. Der Balken selbst bleibt
+   lesbar — er steht VORN in .rp-li-meta und wandert nur mit, statt abgeschnitten
+   zu werden; unlesbar wird zuerst die Zeile um ihn herum.
+
+   Die Linie ist ein Hintergrund-Verlauf und kein border-left: ein Rand sitzt am
+   Rand der Zeile, die Fuehrungslinie gehoert aber an die Stelle, an der die
+   Einrueckung anfaengt. */
+.rp-li-bead{
+  --rp-schritt:15px;
+  padding-left:calc(13px + var(--rp-t, 0) * var(--rp-schritt));
+  padding-top:7px; padding-bottom:7px;
+}
+.rp-li-bead.is-sub{
+  background-image:linear-gradient(var(--line-2), var(--line-2));
+  background-size:1px 100%;
+  background-repeat:no-repeat;
+  background-position:calc(6px + (var(--rp-t, 1) - 1) * var(--rp-schritt)) 0;
+}
+/* Jenseits des Deckels sagt die Zahl, was die Einrueckung nicht mehr sagt. */
+.rp-li-lv{
+  flex:none; font-family:var(--mono); font-size:9.5px; color:var(--amber);
+  border:1px solid var(--line-3); border-radius:3px; padding:0 3px;
+}
+.rp-li-z1{ display:flex; align-items:baseline; gap:8px; min-width:0; }
+.rp-li-bead .rp-li-id{
+  flex:none; font-family:var(--mono); font-size:10.5px; color:var(--dim);
+}
+.rp-li-bead .rp-li-t{
+  flex:1 1 auto; min-width:0; font-size:12.5px; color:var(--fg); font-weight:500;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.rp-li-bead.is-active .rp-li-id{ color:var(--cyan); }
+.rp-li-bead.is-active .rp-li-t{ color:var(--fg-strong); }
+.rp-li-meta{ display:flex; align-items:center; gap:5px; flex-wrap:nowrap; overflow:hidden; margin-top:4px; }
+.rp-li-empty{ padding:10px 13px 12px 26px; color:var(--faint); font-style:italic; font-size:11px; }
+
+/* ---- Zwei Spalten statt drei (gkp-tl2) ----
+   Der Rumpf hat sonst Rail + Projektspalte + Liste + Inhalt. In Reports faellt
+   die Projektspalte weg; ihr Inhalt (Projektkopf, Abschnitte) zieht in den
+   Listenkopf um, verschoben und nicht nachgebaut — siehe rpNavEinhaengen.
+   Die 30px-Rail bleibt: dort und nur dort haengt die Projektauswahl, sie
+   duerfte also nicht mit verschwinden.
+   `body.rp-2col` ist zwei Klassen tief, weil die Basisregeln fuer .pane-side
+   inline in render_page.go stehen und damit nach dieser Datei geladen werden. */
+body.rp-2col .pane-side{
+  width:30px; flex:0 0 30px; grid-template-columns:30px;
+}
+body.rp-2col .proj-col{ display:none; }
+
+/* Die Abschnitte waagerecht statt untereinander. Alles bleibt sichtbar: Label,
+   Zaehler und die Token-Angabe, die in der Spalte eine zweite Zeile war und
+   hier hinter die Zahl rutscht. */
+.rp-kopfnav{ padding:10px 10px 9px; border-bottom:1px solid var(--line-2); }
+.rp-kopfnav #mp-nav{
+  display:flex; flex-wrap:wrap; align-items:center; gap:1px 4px; padding:0;
+}
+.rp-kopfnav .proj-colhd{ padding:0 0 5px; border:0; }
+.rp-kopfnav .proj-colhd b{ font-size:11px; }
+/* position:static ist der eigentliche Punkt: in der Spalte ist .nav-gl eine
+   absolut gesetzte Rinne links neben der Gruppe (.nav-gd hat dafuer
+   position:relative und padding-left). Waagerecht bliebe sie sonst ueber den
+   Eintraegen liegen — gemessen: "WISSEN" lag auf "knowledge/". */
+.rp-kopfnav .nav-gd{
+  position:static; display:flex; align-items:center; gap:5px;
+  padding-left:0; min-height:0;
+}
+.rp-kopfnav .nav-gb{ display:flex; flex-wrap:wrap; gap:1px 2px; padding:0; }
+.rp-kopfnav .nav-gl{
+  position:static; width:auto; padding:0 5px 0 0; align-items:center;
+  border-right:1px solid var(--line); overflow:visible;
+}
+.rp-kopfnav .nav-gt{
+  writing-mode:horizontal-tb; transform:none; font-size:8.5px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--faint); white-space:nowrap;
+}
+.rp-kopfnav .nav-i, .rp-kopfnav #mp-nav .nav-i{
+  display:flex; align-items:baseline; gap:4px; padding:2px 6px; margin:0;
+  border-radius:5px; width:auto;
+}
+.rp-kopfnav #mp-nav .nav-i.nav-solo{ margin:0; padding-left:6px; }
+.rp-kopfnav .nav-i .nn, .rp-kopfnav #mp-nav .nav-i .nn,
+.rp-kopfnav #mp-nav .nav-i.nav-solo .nn{
+  font-size:10.5px; letter-spacing:.02em; text-transform:none; font-weight:600;
+}
+.rp-kopfnav .nav-i .nc{ font-size:9px; text-align:left; }
+.rp-kopfnav .nav-i .nc small{ display:inline; margin-left:3px; }
+.rp-kopfnav .nav-i.is-empty{ opacity:.45; }
+
+/* ---- Die durchgehende Zeitleiste (gkp-tl2) ----
+   Eine Karte ist ein Abschnitt, ein Bead ein Block darin, in derselben
+   Reihenfolge wie die Liste links. Der Block ist das Sprungziel: data-rp-tl-*
+   traegt die Zuordnung, damit rpTlKnoten sie ohne eine zweite Buchfuehrung
+   findet. */
+.rp-tl{ scroll-behavior:auto; }
+.rp-tl-map{ display:flex; flex-direction:column; gap:14px; }
+.rp-tl-map + .rp-tl-map{ margin-top:10px; padding-top:18px; border-top:2px solid var(--line-2); }
+.rp-tl-bead{
+  display:flex; flex-direction:column; gap:10px;
+  padding:12px 0 14px; border-top:1px solid var(--line);
+  scroll-margin-top:8px;
+}
+/* Der gewaehlte Block muss erkennbar sein, sonst sieht ein Sprung aus wie
+   kein Sprung: die Leiste stellt den Block an den oberen Rand, und ohne
+   Markierung ist nicht zu unterscheiden, ob das der gewaehlte ist oder bloss
+   der, der gerade oben steht. Eine Kante allein reichte dafuer nicht — am
+   laufenden Stand war der 3px-Strich am aeussersten Rand kaum zu sehen.
+   Jetzt Kante UND eine sehr leichte Flaeche; der Nachbar bleibt trotzdem
+   gleichwertig lesbar. */
+.rp-tl-bead.is-hier{
+  box-shadow:inset 3px 0 0 var(--amber);
+  background:color-mix(in oklch, var(--amber) 5%, transparent);
+  padding-left:11px; padding-right:11px; border-radius:0 8px 8px 0;
+}
+.rp-tl-bead.is-hier .p-head .pt{ color:var(--fg-strong); }
+/* Dieselbe Tiefe wie links (gkp-wsk), nur groesser: die Spalte ist doppelt so
+   breit, und ein Block ist kein Zeilenkopf. margin statt padding, weil
+   .is-hier die Polsterung fuer seine Markierung schon belegt. */
+.rp-tl-bead.is-sub{
+  margin-left:calc(var(--rp-t, 0) * 22px);
+  border-left:1px solid var(--line);
+  padding-left:12px;
+}
+.rp-tl-leer{ font-style:italic; padding:2px 0; }
+
+/* Der Plan-Graph ist der Kopf der Gruppe, nicht ihr Anhang: offen und in
+   voller Hoehe. KEIN max-height und KEIN overflow — ein Deckel erzeugt einen
+   zweiten Scrollbalken im ohnehin scrollenden .rp-wrap, und wer im inneren
+   Balken steht, scrollt die Seite nicht mehr weiter. Die Breite deckelt
+   stattdessen die Hoehe: .rp-svg svg{max-width:100%;height:auto} skaliert den
+   Graphen auf die Spalte, damit auch quer nichts ueberlaeuft. */
+.rp-plan{ border-top:1px dashed var(--line-2); padding-top:8px; margin-top:4px; }
+.rp-plan-kopf{
+  display:flex; align-items:center; gap:10px;
+  font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim);
+  padding:2px 0 6px;
+}
+/* Zwei Klassen, nicht eine: .rp-svg steht WEITER UNTEN in dieser Datei und
+   setzt overflow:auto — bei gleicher Spezifitaet gewinnt die spaetere Regel,
+   ein einfaches .rp-plan-svg{overflow:visible} bliebe also wirkungslos. */
+.rp-svg.rp-plan-svg{ overflow:visible; margin:0 0 10px; }
+
+/* Die Karte als erster EINTRAG ihrer Gruppe — dieselbe Zeilenform wie ein
+   Bead, damit die Pfeiltaste keinen Bruch macht, aber als Kopfzeile der
+   Gruppe erkennbar. */
+.rp-li-karte{
+  padding-left:13px; padding-top:7px; padding-bottom:7px;
+  background:color-mix(in oklch, var(--amber) 4%, transparent);
+}
+.rp-li-karte .rp-li-id{
+  flex:none; font-family:var(--mono); font-size:10.5px; color:var(--amber);
+  letter-spacing:.08em; text-transform:uppercase;
+}
+.rp-li-karte .rp-li-t{
+  flex:1 1 auto; min-width:0; font-size:11.5px; color:var(--dim);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.rp-li-karte.is-active{ background:var(--panel-3); box-shadow:inset 2px 0 0 var(--amber); }
+.rp-li-karte.is-active .rp-li-t{ color:var(--fg-2); }
+/* Der Kartenkopf rechts wird wie ein Bead-Block markiert, sonst zeigt die
+   Liste eine Auswahl an, die drueben nirgends zu sehen ist. */
+.rp-epic-kopf.is-hier, .rp-map-unknown.is-hier{
+  box-shadow:inset 3px 0 0 var(--amber);
+  background:color-mix(in oklch, var(--amber) 5%, transparent);
+  padding-left:11px; border-radius:0 8px 8px 0;
+}
+
+/* Aufklappbares (Verlauf je Bead und je Karte). */
+.rp-lazy{ border-top:1px dashed var(--line-2); padding-top:8px; }
+.rp-lazy-sum{
+  cursor:pointer; list-style:none; font-size:10px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--dim); padding:2px 0;
+}
+.rp-lazy-sum::-webkit-details-marker{ display:none; }
+.rp-lazy-sum::before{ content:"▸ "; color:var(--faint); }
+details[open] > .rp-lazy-sum::before{ content:"▾ "; }
+.rp-lazy-sum:hover{ color:var(--cyan); }
+
+/* ---- Reports-Sektionen (gkp-uc7): Startklar · In Arbeit · Historie · Rest.
+   Die Kopfzeile folgt .gh-sec > .sh, damit eine Sektion hier aussieht wie eine
+   Sektion woanders. */
+.rp-sec{ display:flex; flex-direction:column; gap:10px; }
+.rp-sec-head{
+  font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim);
+  display:flex; align-items:center; gap:8px; margin:0;
+  padding-bottom:7px; border-bottom:1px solid var(--line);
+}
+.rp-sec-head .lc{ color:var(--faint); letter-spacing:0; text-transform:none; }
+
+/* Ohne Abstand klebt die Map-Id am Gruppentitel ("…parallelem Ladentrey-kd3").
+   Hier statt im Markup, weil .li-group an mehreren Stellen gebaut wird und
+   nicht jede das Leerzeichen mitbrachte. */
+.li-group .ct{ margin-left:7px; }
+.rp-ms-m{
+  font-family:var(--mono); font-size:10.5px; color:var(--faint);
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+/* Der Balken traegt die Quote, nicht die Farbe: gruen faerben hiesse, eine
+   niedrige Quote als Fehler zu behaupten — ein Repo mit viel offener Arbeit ist
+   aber kein Repo mit einem Beleg-Problem. Beanstandet wird nur das rote Badge
+   "N ohne Beleg" daneben. */
+.rp-ms-bar{
+  flex:none; width:64px; height:4px; border-radius:2px;
+  background:var(--line-2); overflow:hidden;
+}
+.rp-ms-bar > span{ display:block; height:100%; background:var(--fg-2); }
+.rp-ms-pct{
+  flex:none; width:34px; text-align:right; font-family:var(--mono); font-size:10.5px;
+  color:var(--fg-2); font-variant-numeric:tabular-nums;
+}
+
+/* Der Inhalt rechts (gkp-o71). Traegt die Polsterung, die vorher als
+   inline-style am Wrapper hing — dort war sie unauffindbar und liess sich
+   nicht ueberschreiben. */
+.rp-wrap{
+  height:100%; overflow:auto; padding:14px 16px;
+  display:flex; flex-direction:column; gap:16px;
+}
+/* Der Kopf des gewaehlten Beads: gebaut wie .rp-epic-kopf, damit Bead und
+   Map im Inhalt dieselbe Gestalt haben und nur der Umfang sich unterscheidet. */
+.rp-bead-meta{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:9px 0 3px; border-bottom:1px solid var(--line);
+}
+/* Der Weg in die Epic-Ansicht. Steht bei den Zahlen und nicht in der
+   Kopfzeile: dort draengeln sich schon die Abzeichen. */
+.rp-nur-epic{
+  margin-left:auto; background:none; border:1px solid var(--line-2); border-radius:6px;
+  padding:2px 9px; cursor:pointer; font:inherit; font-size:10.5px; color:var(--dim);
+}
+.rp-nur-epic:hover{ color:var(--cyan); border-color:var(--cyan); }
+
+/* Epic-Ansicht (gkp-ar7.30): Kopf mit Karte, darunter der Verlauf. */
+.rp-zurueck{
+  align-self:flex-start; background:none; border:0; padding:2px 0; cursor:pointer;
+  font:inherit; font-size:11.5px; color:var(--dim);
+}
+.rp-zurueck:hover{ color:var(--cyan); }
+.rp-epic-zahlen{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:9px 0 3px; border-bottom:1px solid var(--line);
+}
+/* Der Balken im Kopf darf breiter sein als in der Liste: hier steht er allein
+   und ist die Hauptaussage, dort teilt er sich die Zeile mit allem anderen. */
+.rp-epic-zahlen .rp-ms-bar{ width:140px; height:5px; }
+.rp-svg-note{
+  padding:6px 2px 0; font-size:10.5px; line-height:1.55; color:var(--faint); max-width:78ch;
+}
+.rp-svg-note code{ color:var(--green); }
+
+/* Zeitleiste (gkp-ar7.24): eine durchgehende Schiene links, Tagestrenner als
+   eigene Zeile, je Eintrag Uhrzeit und Punktmarke. Die Schiene ist EIN Rand am
+   <ol> statt eines Elements je Zeile — sonst hat sie zwischen den Eintraegen
+   Luecken und liest sich als gestrichelt statt als Verlauf. */
+.rp-timeline{ --tlgut:72px; }
+.rp-tl{ list-style:none; margin:0; padding:0 0 0 var(--tlgut); position:relative; }
+.rp-tl::before{
+  content:""; position:absolute; left:calc(var(--tlgut) - 1px); top:8px; bottom:10px;
+  width:1px; background:var(--line-2);
+}
+.rp-tl-day{
+  position:relative; display:flex; align-items:baseline; gap:9px; margin:20px 0 6px;
+  font-size:10px; letter-spacing:.11em; text-transform:uppercase;
+  font-weight:700; color:var(--dim);
+}
+.rp-tl-day:first-child{ margin-top:2px; }
+/* -5.5px zentriert den 9px-Ring auf der Schiene: die liegt bei
+   calc(var(--tlgut) - 1px), der Inhalt beginnt bei var(--tlgut), also 1px
+   weiter rechts als die Linie. */
+.rp-tl-dmark{
+  position:absolute; left:-5.5px; top:2px; width:9px; height:9px; border-radius:50%;
+  border:1px solid var(--line-3); background:var(--panel);
+}
+.rp-tl-dn{ font-family:var(--mono); font-size:9.5px; letter-spacing:0; color:var(--faint); }
+.rp-tl-node{ position:relative; }
+/* Die Uhrzeit steht links AUSSERHALB der Schiene, rechtsbuendig: so bilden die
+   Zeiten eine Spalte, an der man den Verlauf abliest, ohne zu suchen. */
+.rp-tl-time{
+  position:absolute; left:calc(-1 * var(--tlgut)); top:25px; width:calc(var(--tlgut) - 17px);
+  text-align:right; font-family:var(--mono); font-size:10.5px; color:var(--faint);
+  font-variant-numeric:tabular-nums;
+}
+/* Der Punkt sitzt auf der Schiene; der Ring in Hintergrundfarbe schneidet sie
+   dort auf, damit die Marke nicht auf der Linie klebt. */
+.rp-tl-dot{
+  position:absolute; left:-4.5px; top:28px; width:7px; height:7px; border-radius:50%;
+  background:var(--line-3); box-shadow:0 0 0 3px var(--panel);
+}
+
+/* Abwechselnd heller und dunkler, damit sich zwei lange Eintraege nicht zu
+   einem Block lesen.
+
+   Der Abstand zwischen zwei Eintraegen lag vorher als margin-top am
+   .rp-tl-item — und ein Margin nimmt keinen Hintergrund an, er kollabiert
+   sogar aus dem <li> heraus. Der Streifen haette dort also Luecken gehabt.
+   Der Abstand ist deshalb jetzt PADDING am <li>. Uhrzeit und Punkt muessen
+   dabei um denselben Betrag nach unten: sie haengen am Padding-Kasten, und
+   dessen Oberkante ist die Oberkante des <li> — das Padding schiebt den Inhalt,
+   nicht ihren Bezugspunkt. */
+.rp-tl-node{ padding:12px 8px 8px 0; }
+.rp-tl-item{ margin-top:0; }
+/* Die Flaeche reicht als Pseudo-Element nach links UEBER die Rinne hinaus:
+   sonst hoerte der Streifen an der Schiene auf und die Zeitspalte haenge
+   daneben in der Luft. Ueber dem Streifen liegen Uhrzeit, Punkt und Eintrag
+   per z-index — nicht per Reihenfolge, denn zwei davon sind absolut
+   positioniert und haetten sonst hinter der Flaeche gelegen. */
+.rp-tl-alt::before{
+  content:""; position:absolute; left:calc(-1 * var(--tlgut)); right:0; top:0; bottom:0;
+  background:var(--panel-2);
+}
+.rp-tl-time, .rp-tl-dot{ z-index:1; }
+.rp-tl-item{ position:relative; z-index:1; }
+/* Der Ring um den Punkt schneidet die Schiene auf und muss die Farbe DER ZEILE
+   treffen, nicht die des Panels — sonst sitzt auf jedem zweiten Punkt ein
+   hellerer Fleck. */
+.rp-tl-alt .rp-tl-dot{ box-shadow:0 0 0 3px var(--panel-2); }
+
+/* Die Herkunft steht ueber dem Eintrag, nicht daneben: in der Zeitleiste
+   wechselt sie von Zeile zu Zeile und wuerde eingerueckt untergehen. */
+.rp-tl-item{ border-left:2px solid var(--line-2); padding-left:12px; }
+.rp-tl-item .rp-entry{ border-left:0; padding-left:0; margin-top:2px; }
+.rp-tl-origin{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.rp-hist-who{ font-size:11px; color:var(--dim); }
+
+/* Die vier Spuren unterscheiden sich am linken Rand und am Punkt, nicht durch
+   Flaechen: die Zeitleiste ist eine Liste, und vier Hintergrundfarben machen
+   daraus ein Muster, in dem die Chronologie untergeht. */
+.rp-src-commit .rp-tl-item{ border-left-color:var(--cyan); }
+.rp-src-pr .rp-tl-item{ border-left-color:var(--mag); }
+.rp-src-tracker .rp-tl-item{ border-left-color:var(--line-3); }
+.rp-src-report .rp-tl-dot{ background:var(--green); }
+.rp-src-commit .rp-tl-dot{ background:var(--cyan); }
+.rp-src-pr .rp-tl-dot{ background:var(--mag); }
+.rp-hist-map{ margin-top:3px; }
+.rp-hist-line{ display:flex; align-items:center; gap:8px; margin-top:4px; font-size:12px; flex-wrap:wrap; }
+.rp-hist-title{ flex:1 1 auto; min-width:0; color:var(--fg); word-break:break-word; }
+a.rp-hist-title{ text-decoration:none; }
+a.rp-hist-title:hover{ text-decoration:underline; }
+.rp-hash{ font-family:var(--mono); font-size:11px; color:var(--fg-2); }
+.rp-hist-arrow{ color:var(--dim); }
+.rp-hist-reason{ font-size:11.5px; color:var(--fg-2); margin-top:4px; white-space:pre-wrap; }
+
+/* Filter nach Herkunft. Zahlen stehen an den Chips, weil "0" die Antwort auf
+   "gibt es dazu nichts" ist und ein leerer Klick sie sonst erst zeigt. */
+.rp-hist-chips{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:8px 0 2px; }
+.rp-chip{
+  display:inline-flex; align-items:center; gap:5px; cursor:pointer;
+  font:inherit; font-size:11px; color:var(--fg-2);
+  background:var(--inset); border:1px solid var(--line); border-radius:999px; padding:3px 9px;
+}
+.rp-chip:hover{ color:var(--fg); border-color:var(--line-2); }
+.rp-chip.is-on{ color:var(--fg); border-color:var(--fg-2); background:transparent; }
+.rp-chip .ct{ font-family:var(--mono); font-size:10.5px; color:var(--dim); }
+.rp-hist-notes{ margin:6px 0 0; }
+.rp-hist-note{ font-size:11.5px; color:var(--dim); padding:3px 0; }
+
+.rp-epic-kopf .p-head, .rp-bead-pane .p-head{ flex-wrap:wrap; gap:8px; }
+.rp-svg{ overflow:auto; border:1px solid var(--line); border-radius:9px; background:var(--inset); padding:10px; margin:10px 0 14px; }
+.rp-svg svg{ display:block; max-width:100%; height:auto; }
+/* Der Graph wird nachgeladen (gkp-3k6). Der Platzhalter haelt die Hoehe, sonst
+   springt beim Eintreffen jede Karte darunter nach unten. */
+.rp-svg-lade{ display:flex; align-items:center; justify-content:center; min-height:120px; }
+.rp-other{ margin-top:10px; }
+
+/* Der Ueberblick (gkp-3sq): das erste Bild der Ansicht, ueber allen Karten.
+   Er scrollt MIT statt zu kleben — er ist die Einleitung, nicht ein Kopf, den
+   man dauernd im Blick braucht; klebend naehme er der Zeitleiste die halbe
+   Hoehe. */
+.rp-ov{ flex:none; }
+.rp-ov-svg{ margin:10px 0 0; }
+/* Die Knoten sind Wege in die Karte, also muessen sie sich auch so anfuehlen.
+   graphviz setzt fuer href ein <a> um den Knoten; der Zeiger und das leichte
+   Aufhellen haengen daran. */
+.rp-ov-svg a{ cursor:pointer; }
+.rp-ov-svg a:hover{ opacity:.82; }
+.rp-ov-svg a:focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
+
+/* Der Pfad (gkp-ar7.??): dieselbe Karten-Menge wie im SVG darueber, aber als
+   Wellen statt als Graph — kompakt, weil er nur eine Reihenfolge zeigt, keine
+   Kanten und kein Layout. */
+.rp-pfad{ margin-top:10px; display:flex; flex-direction:column; gap:7px; }
+.rp-pfad-bilanz{ display:flex; gap:6px; flex-wrap:wrap; }
+.rp-pfad-welle{ display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; }
+.rp-pfad-wt{
+  flex:none; font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--dim); white-space:nowrap;
+}
+.rp-pfad-marken{ display:flex; flex-wrap:wrap; gap:6px; min-width:0; }
+/* Eine Pille statt einer .badge: die Marke traegt zwei Werte (Titel und
+   Zahl) und ist klickbar — .badge ist einzeilig und passiv, das reicht hier
+   nicht. */
+.rp-pfad-marke{
+  display:inline-flex; align-items:center; gap:6px; max-width:220px;
+  padding:3px 8px; border:1px solid var(--line); border-radius:999px;
+  background:var(--panel-2); cursor:pointer; font-size:10.5px; color:var(--fg-2);
+}
+.rp-pfad-marke:hover{ border-color:var(--line-2); color:var(--fg); }
+.rp-pfad-marke:focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
+.rp-pfad-marke.c{ border-color:color-mix(in oklch,var(--cyan) 45%,var(--line)); color:var(--cyan); }
+.rp-pfad-marke.r{ border-color:color-mix(in oklch,var(--red) 45%,var(--line)); color:var(--red); }
+/* Der Titel wird gekuerzt, nie umgebrochen — sonst wachsen die Marken einer
+   Welle unterschiedlich hoch. Der volle Text steht im title-Attribut. */
+.rp-pfad-mt{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+.rp-pfad-mo{
+  flex:none; font-family:var(--mono); font-size:10px; color:var(--faint);
+  font-variant-numeric:tabular-nums;
+}
+
+.rp-bead{ border:1px solid var(--line); border-radius:9px; padding:10px 12px; margin:10px 0; background:var(--panel-2); }
+.rp-bead-id{ font-family:var(--mono); font-size:11.5px; color:var(--fg-2); }
+
+.rp-entry{
+  border-left:2px solid var(--line-2); padding:8px 0 8px 12px; margin-top:10px;
+}
+.rp-entry.rp-superseded{ opacity:.55; border-left-color:var(--line); }
+.rp-entry.rp-superseded .rp-entry-title, .rp-entry.rp-superseded .rp-entry-date{ text-decoration:line-through; }
+/* Ersetzte Eintraege sind <details>: zugeklappt, aber erreichbar. */
+details.rp-entry.rp-superseded > summary{ cursor:pointer; list-style:none; }
+details.rp-entry.rp-superseded > summary::-webkit-details-marker{ display:none; }
+details.rp-entry.rp-superseded > summary::before{ content:"\25B8"; color:var(--dim); font-size:10px; }
+details.rp-entry.rp-superseded[open] > summary::before{ content:"\25BE"; }
+details.rp-entry.rp-superseded[open]{ opacity:.8; }
+/* Relativalter ("5m"/"2h"/"3d"), im Browser berechnet - siehe rpAgo. */
+.rp-ago{ font-size:10px; color:var(--dim); font-variant-numeric:tabular-nums;
+  border:1px solid var(--line); border-radius:999px; padding:0 5px; line-height:15px; white-space:nowrap; }
+.rp-entry-head{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-bottom:4px; }
+.rp-entry-date{ font-size:10.5px; color:var(--dim); font-variant-numeric:tabular-nums; }
+.rp-entry-title{ font-size:12.5px; color:var(--fg); font-weight:500; }
+.rp-entry-impact{ font-size:11.5px; color:var(--fg-2); margin-top:3px; }
+.rp-notes{ margin-top:6px; font-size:12px; }
+.rp-proofs{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+.rp-proof{ font-size:11px; }
+.rp-proof-cmd{
+  margin:0; background:var(--bg-grid); border:1px solid var(--line-2); border-radius:6px;
+  padding:8px 10px; white-space:pre-wrap; word-break:break-word; color:var(--fg-2);
+}
+.rp-proof-file code, .rp-proof-missing code{ color:var(--cyan); }
+.rp-proof-missing{ color:var(--red); }
+/* Der Datei-Beleg traegt seit gkp-wiz einen title, wenn der Store eine Kopie
+   unter artefacts/ abgelegt hat. Ohne Cursor weiss niemand, dass da etwas zu
+   holen ist — das ist die ganze Aufgabe dieser Zeile. */
+.rp-proof-file code[title]{ cursor:help; }
+.rp-proof-image{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  background:var(--panel-3); border:1px solid var(--line-2);
+  border-radius:6px; padding:3px; cursor:pointer; font:inherit; line-height:0;
+}
+.rp-proof-image:hover{ background:var(--panel-2); border-color:var(--line-3,var(--line-2)); }
+.rp-thumb{ width:72px; height:72px; object-fit:cover; border-radius:4px; display:block; }
+
+/* Beleg im Textfluss, nicht in einer Spalte daneben (gkp-o71).
+   Bis hierher stand das Bild rechts neben dem Text, auf fest 40% der Zeile.
+   Das war fuer die volle Fensterbreite gebaut; im 2/3-Inhalt der neuen
+   Ansicht bleiben davon ~200px, und darin ist ein 2240px breiter Screenshot
+   nur noch ein Fleck. Inline bekommt er die ganze Breite des Inhalts.
+   Was aus der alten Regel BLEIBT, weil es unabhaengig vom Layout gilt:
+   object-fit:contain (ein Diagramm darf nicht beschnitten werden) und eine
+   max-height statt Absolutsatz, damit ein sehr hohes Bild nicht den ganzen
+   Eintrag aufzieht. */
+.rp-entry-body{ display:block; }
+.rp-entry-text{ min-width:0; }
+/* Das Bild steht seit gkp-tl2 UEBER dem Text (margin-bottom statt -top) und
+   etwas niedriger: in einer durchgehenden Zeitleiste scrollt man an 66 Beads
+   vorbei, und bei 52vh je Beleg ist das Lesen ein Kampf gegen die Bildlaufkante.
+   36vh ist gross genug zum Wiedererkennen; fuer die Einzelheiten gibt es den
+   Klick auf die Vollansicht, den es ohnehin schon gab. */
+.rp-entry-figs{ min-width:0; margin-bottom:9px; }
+.rp-figs-inner{ display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
+.rp-entry-figs .rp-proof-image{ max-width:100%; }
+.rp-entry-figs .rp-thumb{
+  width:auto; height:auto; max-width:100%; max-height:36vh; object-fit:contain;
+}
+/* 96vh Kastenhoehe minus Kopfzeile und Polsterung - so gross wie das Fenster
+   hergibt, ohne dass der Kasten scrollen muss. */
+.rp-modal-img{
+  display:block; width:auto; height:auto;
+  max-width:100%; max-height:calc(96vh - 74px); margin:0 auto;
+}
+
+/* ---- GitHub-Karte: offene Issues + PRs (GET /github) ---- */
+.gh-wrap{ overflow:auto; height:100%; }
+.gh-sec{ padding:12px 16px 4px; }
+.gh-sec > .sh{
+  font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim);
+  display:flex; align-items:center; gap:8px; margin:0 0 8px;
+  padding-bottom:7px; border-bottom:1px solid var(--line);
+}
+.gh-sec > .sh .lc{ color:var(--faint); letter-spacing:0; }
+.gh-row{
+  display:flex; align-items:center; gap:9px; padding:6px 0;
+  border-bottom:1px dotted var(--line); font-size:12px;
+}
+.gh-row:last-child{ border-bottom:0; }
+.gh-num{ font-family:var(--mono); font-size:11px; color:var(--dim); min-width:44px; font-variant-numeric:tabular-nums; }
+/* Der Titel nimmt den Rest und darf umbrechen: ein abgeschnittener Issue-Titel
+   ist der haeufigste Grund, das Ding doch auf GitHub aufmachen zu muessen. */
+.gh-title{ flex:1 1 auto; color:var(--fg); text-decoration:none; word-break:break-word; }
+.gh-title:hover{ color:var(--cyan); text-decoration:underline; }
+.gh-meta{ font-size:10.5px; color:var(--faint); white-space:nowrap; }
+.gh-labels{ display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+.gh-label{
+  font-size:9.5px; border:1px solid var(--line-2); border-radius:999px;
+  padding:0 6px; line-height:15px; color:var(--dim); white-space:nowrap;
+}
+/* Der Hinweis auf die weggelassenen Labels. Kein Label, also auch keine
+   Label-Farbe: gestrichelt und blass, damit er nicht als siebtes Label gelesen
+   wird. cursor:help, weil die genaue Zahl im title steht. */
+.gh-label-mehr{ border-style:dashed; color:var(--faint); cursor:help; }
+.gh-branch{ font-family:var(--mono); font-size:9.5px; color:var(--faint); white-space:nowrap; }
+.gh-foot{ padding:10px 16px 16px; font-size:10.5px; color:var(--faint); line-height:1.5; }
+.gh-wrap .rp-gap-warn{ margin:12px 16px; }
+
+/* responsive */
+@media (max-width:880px){
+  .mp, .mp.is-overview, .mp.is-reports{ grid-template-columns:1fr; height:auto; min-height:100vh; }
+  .pane-side{ width:100% !important; flex:none !important; border-right:0;
+    border-bottom:1px solid var(--line-2); overflow:visible;
+    grid-template-columns:minmax(0,1fr); }
+  /* Schmal ist ein 30px-Streifen mit gedrehtem Text unbrauchbar: die Rail legt
+     sich quer, die Namen stehen wieder waagerecht nebeneinander. */
+  .proj-rail{ flex-direction:row; flex-wrap:wrap; overflow:visible; padding:6px; gap:4px; }
+  .prl{ writing-mode:horizontal-tb; transform:none; width:auto; padding:5px 9px; }
+  .prl-ov{ border-bottom:0; padding-bottom:5px; margin-bottom:0; }
+  .prl-more{ margin-top:0; height:auto; border-top:0; padding:0 8px; }
+  .proj-col{ overflow:visible; }
+  #mp-nav{ display:flex; flex-wrap:wrap; gap:4px; padding:8px; }
+  #mp-nav .nav-gd{ width:100%; }
+  #mp-nav .nav-i{ width:auto; }
+  .mp-list{ border-right:0; border-bottom:1px solid var(--line-2); max-height:300px; }
+  .mp.is-overview .mp-list{ display:none; }
+  /* Die Bead-Liste darf schmal mehr Platz nehmen als eine Dateiliste: sie ist
+     die Navigation dieser Ansicht, nicht ein Beiwerk. */
+  .mp.is-reports .mp-list{ max-height:44vh; }
+  .rp-entry-figs .rp-thumb{ max-height:44vh; }
+}
+
+/* ---------- Aufgaben-Ansichten (gkp-7gb) ----------
+   Gestaltungsgrundlage ist docs/design/01-dichte.html: eine Zeile je Eintrag,
+   feste Spalten, Zahlen rechtsbuendig und tabellarisch, alles Lange
+   ausklappbar statt dauerhaft offen.
+
+   Die Zeile borgt sich .li und .rp-li-* vom Reports-Baum, statt sie
+   nachzubauen — Einrueckung (--rp-t), Fuehrungslinie, Titelkuerzung und
+   Fortschrittsbalken sind dort schon gemessen begruendet, und zwei Fassungen
+   davon wuerden auseinanderlaufen, sobald eine von beiden angefasst wird. Was
+   hier dazukommt, ist nur, was es dort nicht gibt: die Aktionsspalte rechts
+   und das ausklappbare Formular darunter. */
+.av-wrap{ padding:14px 16px 40px; }
+.av-kopf{
+  display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+  padding-bottom:8px; border-bottom:1px solid var(--line-2); margin-bottom:2px;
+}
+.av-kopf b{ font-size:14px; color:var(--fg-strong); }
+.av-kopf .lc{ font-size:10.5px; color:var(--dim); font-variant-numeric:tabular-nums; }
+.av-zs{ margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; }
+/* Die Bilanz im Kopf: Zahl gross, Wort klein daneben — dieselbe Form wie die
+   Kacheln des Entwurfs, nur einzeilig, weil hier vier Zahlen stehen und nicht
+   vierzehn. Gezaehlt wird in Go (AufgabenAnsicht.Zaehler). */
+.av-z{
+  font-size:10px; color:var(--dim); letter-spacing:.04em;
+  border:1px solid var(--line-2); border-radius:999px; padding:1px 8px;
+}
+.av-z b{ color:var(--fg); font-variant-numeric:tabular-nums; margin-right:5px; }
+/* Der Hinweis ist eine Einschraenkung, keine Warnung: gedaempft, aber da.
+   Eine Luecke, die niemand nennt, sieht aus wie Vollstaendigkeit. */
+.av-hinweis{
+  font-size:10.5px; color:var(--faint); font-style:italic;
+  padding:7px 0 9px; border-bottom:1px solid var(--line);
+}
+/* Das Ende einer GEKAPPTEN Liste (gkp-dop). Ein Strich OBEN statt unten, weil
+   der Satz zur Liste darueber gehoert und nicht zu dem, was folgt — er sagt,
+   wo sie aufhoert. Sonst wie .av-hinweis: eine Einschraenkung, keine Warnung. */
+.av-gekappt{
+  font-size:10.5px; color:var(--faint); font-style:italic;
+  padding:9px 0 7px; border-top:1px solid var(--line);
+}
+.av-row{ border-bottom:1px solid var(--line); }
+.av-li{ border-bottom:0; cursor:default; align-items:flex-start; }
+.av-li:hover{ background:var(--panel-2); }
+.av-akt{ flex:none; display:flex; gap:5px; align-self:center; }
+.av-b{
+  font:inherit; font-size:10px; letter-spacing:.04em;
+  color:var(--dim); background:transparent; border:1px solid var(--line-2);
+  border-radius:4px; padding:3px 9px; cursor:pointer;
+}
+.av-b:hover{ color:var(--fg); border-color:var(--line-3); background:var(--panel-3); }
+.av-b-go{ color:var(--cyan); border-color:var(--cyan); }
+.av-b-go:hover{ color:var(--bg); background:var(--cyan); }
+/* Termin und Karte stehen in der Meta-Zeile und nicht als Abzeichen: ein
+   Abzeichen behauptet eine Kategorie, ein Termin ist ein Wert. */
+.av-termin{
+  flex:none; font-family:var(--mono); font-size:10px; color:var(--amber);
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+.av-termin.av-wann{ color:var(--dim); }
+.av-karte{
+  flex:0 1 auto; min-width:0; font-size:10px; color:var(--faint);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-left:auto;
+}
+.av-fehlt{ color:var(--red); font-size:11px; }
+/* Gruppenkopf je Projekt in der Sammelansicht (gkp-s9n) — nur dort, ein
+   Einzelprojekt-View haette genau eine Gruppe (Begruendung: browser.js
+   avZeichne, zeigeGruppen). Baut auf .li-group auf (render_page.go:66,
+   sticky/uppercase, dasselbe Muster wie .rp-li-map), Masse vom Vorbild
+   .phase-header (git-planner-ios web/main.py :1007-1012). */
+.li-group.av-gk{ display:flex; align-items:center; gap:8px; padding:16px 13px 8px; }
+.av-gk-mark{ width:7px; height:7px; border-radius:50%; flex:none; }
+.av-gk-mark.c{ background:var(--cyan); }
+.av-gk-mark.a{ background:var(--amber); }
+.av-gk-name{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.av-gk-c{ flex:none; font-family:var(--mono); font-size:10px; color:var(--faint);
+  font-variant-numeric:tabular-nums; text-transform:none; letter-spacing:0; }
+/* Zwischenueberschrift (gkp-a1d/gkp-s9n): ein Elternteil ohne eigenen Grund,
+   das nur wegen eines gewaehlten Nachfahren dasteht. Gedaempft statt
+   ausgeblendet — sie ist Struktur, keine Aufgabe (Begruendung:
+   AnsichtEintrag.Ueberschrift), traegt deshalb auch keine Aktionsknoepfe
+   (avZeile). */
+.av-li.av-ueberschrift{ opacity:.6; }
+.av-li.av-ueberschrift .rp-li-t{ font-style:italic; }
+/* Der Herkunftsvermerk einer Zwischenueberschrift: OHNE ihn waere die
+   angezeigte Frist/der Grund eine erfundene Angabe an einem Bead, an dem sie
+   nicht steht (AnsichtEintrag.FristHerkunft). */
+.av-erbe{
+  flex:none; font-size:10px; color:var(--faint); font-style:italic;
+  white-space:nowrap;
+}
+/* Die Auswahlgruende, zwei Kategorien (gkp-2jc). WELCHER Grund welche Klasse
+   bekommt, steht in browser.js (AV_GRUND); hier steht, was die Klassen bedeuten.
+
+   av-ruhig ist der Normalfall — und bewusst LEISER als ein blankes .badge:
+   duennere Schrift, fahlere Farbe, schwaechere Kante. Das ist die Haelfte der
+   Loesung. Die Beanstandung faellt nicht auf, weil sie laut ist, sondern weil
+   um sie herum nichts mehr laut ist; zehn zusaetzliche Farben haetten das
+   Gegenteil bewirkt. Die vier Gruende mit Termindruck oder Arbeitsstand
+   behalten .badge.r/.a/.c/.g und stehen deshalb hier gar nicht. */
+.badge.av-ruhig{
+  font-weight:500; letter-spacing:0; color:var(--faint); border-color:var(--line);
+}
+/* Die einzige Beanstandung: geschlossen ohne aktuellen done-Eintrag. Sie ist
+   die einzige Farbe, die dieser Bead hinzugefuegt hat. Die Kante bleibt sichtbar
+   (.badge.r setzt sie auf transparent) — browser.css laedt nach dash.css, diese
+   Regel gewinnt also; das ist Absicht und keine Spezifitaets-Schlacht: ein
+   Befund darf eine Kontur haben. Das ▲ steht im Text und nicht in ::before,
+   damit es auch dort ankommt, wo das Stylesheet nicht hinreicht. */
+.badge.av-mangel{
+  color:var(--red); background:var(--red-d); border-color:var(--red); font-weight:700;
+}
+/* Ein Grund, den AV_GRUND nicht kennt — in aller Regel eine neue Konstante in
+   appctx, zu der die Zeile in browser.js fehlt. Gestrichelt statt stillschweigend
+   neutral: sonst saehe die Luecke aus wie eine Einordnung, und genau das war
+   der Defekt, den gkp-2jc behoben hat. */
+.badge.av-unbekannt{ border-style:dashed; border-color:var(--line-3); }
+/* Dieselbe Beanstandung in der Bilanz im Kopf. Im Logbuch ist diese Zahl die,
+   die beads_query op=gaps beantwortet — sie ist der Grund, aus dem das Logbuch
+   sie ueberhaupt zaehlt. */
+.av-z.av-mangel{ color:var(--red); border-color:var(--red); }
+.av-z.av-mangel b{ color:var(--red); }
+/* Das Formular ist der Ausklapp-Teil: es entsteht erst beim Oeffnen und
+   verschwindet wieder, statt an jeder Zeile mitgetragen zu werden. */
+.av-form{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap:8px 12px; padding:10px 14px 13px; background:var(--inset);
+  border-top:1px solid var(--line-2);
+}
+.av-form[hidden]{ display:none; }
+.av-fz{ grid-column:1/-1; font-size:10.5px; color:var(--dim); }
+.av-fz code{ color:var(--cyan); }
+.av-f{ display:flex; flex-direction:column; gap:3px; font-size:10px;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--faint); }
+.av-f small{ text-transform:none; letter-spacing:0; color:var(--faint); opacity:.8; }
+.av-f input, .av-f textarea{
+  font:inherit; font-size:12px; text-transform:none; letter-spacing:0;
+  color:var(--fg); background:var(--panel); border:1px solid var(--line-2);
+  border-radius:4px; padding:5px 7px; resize:vertical;
+}
+.av-f input:focus, .av-f textarea:focus{ outline:0; border-color:var(--cyan); }
+.av-drop{
+  grid-column:1/-1; border:1px dashed var(--line-3); border-radius:5px;
+  padding:11px; text-align:center; font-size:10.5px; color:var(--dim);
+}
+.av-drop.is-over{ border-color:var(--cyan); color:var(--cyan); background:var(--panel-2); }
+.av-vorschau{ grid-column:1/-1; display:flex; align-items:center; gap:9px; }
+.av-vorschau img{ max-height:120px; max-width:100%; border:1px solid var(--line-2); border-radius:4px; }
+.av-btn{ grid-column:1/-1; display:flex; gap:6px; }
+.av-msg{ grid-column:1/-1; font-size:10.5px; color:var(--dim); min-height:14px; }
+.av-msg.is-bad{ color:var(--red); }
+
+/* ---------- Zwei Klappstufen (gkp-dnz) ----------
+   Stufe 1: Unteraufgaben. Der Twisty steht VOR der Id in .rp-li-z1 — dieselbe
+   Stelle wie das Ebenen-Abzeichen daneben — und traegt keinen eigenen Text,
+   nur das gedrehte Dreieck aus ::before (dasselbe Zeichenpaar wie
+   .rp-lazy-sum/details.rp-entry.rp-superseded, damit "hier klappt etwas auf"
+   ueberall gleich aussieht). */
+.av-tw{
+  flex:none; width:12px; height:12px; padding:0; margin-right:1px;
+  background:transparent; border:0; cursor:pointer; color:var(--faint);
+  font-size:9px; line-height:12px; text-align:center;
+}
+.av-tw:hover{ color:var(--cyan); }
+.av-tw::before{ content:"▸"; }
+.av-tw.is-offen::before{ content:"▾"; }
+/* Stufe 2: Belege. <details> traegt den Zustand (Muster: rpLazySec) — die
+   SUMMARY zeigt den eager gelieferten Zaehler ("n plan · m done") und ist
+   damit selbst schon das Abzeichen; ein Bild kommt erst beim OEFFNEN
+   dazu (GET /belege). Eingerueckt wie eine Aufgabenzeile derselben Ebene,
+   nicht wie ein Kind — sie IST der Beleg dieser Zeile, keine Unteraufgabe. */
+.av-belege{ padding:2px 13px 6px calc(13px + var(--rp-t, 0) * var(--rp-schritt)); }
+.av-belege .rp-lazy-sum{ font-size:10px; }
+.av-belege .rp-other{ padding-top:6px; }
+
+/* ---------- Bereiche (gkp-8ww, Spec §4.3 / E2) ----------
+   Area → Projekt, die einzige Ebene des Modells, die niemand liefert und
+   jemand festlegt. Die Gestaltung folgt dem Entwurf 01-dichte: eine Zeile je
+   Eintrag, feste Spalten, nichts dauerhaft aufgeklappt. */
+
+/* Der Gruppenkopf ist eine ZEILE, keine Ueberschrift: er traegt Namen, Zahl
+   und Aktion nebeneinander, damit die Liste nicht in Abschnitte zerfaellt. */
+.bz-gruppe{
+  display:flex; align-items:baseline; gap:10px;
+  padding:11px 14px 6px; border-bottom:1px solid var(--line-2);
+}
+.bz-name{ font-size:12px; color:var(--fg-strong); letter-spacing:.03em; }
+.bz-gruppe .lc{ font-size:10.5px; color:var(--dim); font-variant-numeric:tabular-nums; }
+.bz-gruppe > :last-child{ margin-left:auto; }
+/* Die Aktionen einer Gruppe (Umbenennen, Löschen) als EIN Block. Die Regel
+   darüber schiebt nur das letzte Kind nach rechts — ohne diesen Behälter
+   stünde bei zwei Knöpfen der erste an der Zahl und der zweite am Rand. */
+.bz-akt{ display:inline-flex; align-items:baseline; gap:6px; }
+/* Die Sammel-Area ist gedaempft, aber nicht versteckt — sie ist eine offene
+   Pflege, keine Beanstandung. Gelb wie der Navigationspunkt, nicht rot: rot
+   gehoert der ueberfaelligen Arbeit. */
+.bz-gruppe.is-ohne .bz-name{ color:var(--amber); font-style:italic; }
+.bz-leer{ padding:7px 14px 9px; }
+.bz-proj .rp-li-t{ color:var(--fg); }
+.bz-proj .rp-li-meta .lc{ font-family:var(--mono); font-size:10px; color:var(--faint); }
+/* Die Zuweisung ist ein <select> und kein Knopfpaar: die Zielmenge ist die
+   Liste der Areas, und die steht in Go (BereichsNamen). Ein Aufklappen zeigt
+   sie vollstaendig, ohne dass die Zeile sie alle tragen muss. */
+.bz-sel{
+  font:inherit; font-size:11px; color:var(--fg);
+  background:var(--panel); border:1px solid var(--line-2);
+  border-radius:4px; padding:3px 6px; max-width:200px;
+}
+.bz-sel:focus{ outline:0; border-color:var(--cyan); }
+.bz-neu{ display:flex; align-items:center; gap:7px; padding:9px 0 2px; flex-wrap:wrap; }
+.bz-in{
+  font:inherit; font-size:12px; color:var(--fg);
+  background:var(--panel); border:1px solid var(--line-2);
+  border-radius:4px; padding:4px 7px; min-width:180px;
+}
+.bz-in:focus{ outline:0; border-color:var(--cyan); }
+.bz-um{ display:inline-flex; align-items:center; gap:6px; }
+.bz-msg{ font-size:10.5px; color:var(--dim); min-height:14px; }
+.bz-msg.is-bad{ color:var(--red); }
+.av-hinweis.is-bad{ color:var(--red); font-style:normal; }
+.av-z.is-a{ color:var(--amber); border-color:var(--amber); }
+.av-z.is-a b{ color:var(--amber); }

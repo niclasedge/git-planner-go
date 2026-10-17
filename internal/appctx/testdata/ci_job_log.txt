@@ -1,0 +1,62 @@
+﻿2026-09-30T08:14:02.1234567Z Current runner version: '2.319.1'
+2026-09-30T08:14:05.1234568Z ##[group]Operating System
+2026-09-30T08:14:08.1234569Z Ubuntu
+2026-09-30T08:14:11.1234570Z 22.04.5
+2026-09-30T08:14:14.1234571Z LTS
+2026-09-30T08:14:17.1234572Z ##[endgroup]
+2026-09-30T08:14:20.1234573Z ##[group]Runner Image
+2026-09-30T08:14:23.1234574Z Image: ubuntu-22.04
+2026-09-30T08:14:26.1234575Z Version: 20240922.1.0
+2026-09-30T08:14:29.1234576Z ##[endgroup]
+2026-09-30T08:14:32.1234577Z ##[group]GITHUB_TOKEN Permissions
+2026-09-30T08:14:35.1234578Z Contents: read
+2026-09-30T08:14:38.1234579Z Metadata: read
+2026-09-30T08:14:41.1234580Z ##[endgroup]
+2026-09-30T08:14:44.1234581Z Secret source: Actions
+2026-09-30T08:14:47.1234582Z Prepare workflow directory
+2026-09-30T08:14:50.1234583Z Prepare all required actions
+2026-09-30T08:14:53.1234584Z Getting action download info
+2026-09-30T08:14:56.1234585Z Download action repository 'actions/checkout@v4' (SHA:eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871)
+2026-09-30T08:14:59.1234586Z Download action repository 'actions/setup-go@v5' (SHA:0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32)
+2026-09-30T08:15:02.1234587Z Complete job name: test
+2026-09-30T08:15:05.1234588Z ##[group]Run actions/checkout@v4
+2026-09-30T08:15:08.1234589Z with:
+2026-09-30T08:15:11.1234590Z   repository: acme/alpha
+2026-09-30T08:15:14.1234591Z   token: ***
+2026-09-30T08:15:17.1234592Z ##[endgroup]
+2026-09-30T08:15:20.1234593Z Syncing repository: acme/alpha
+2026-09-30T08:15:23.1234594Z ##[group]Getting Git version info
+2026-09-30T08:15:26.1234595Z Working directory is '/home/runner/work/alpha/alpha'
+2026-09-30T08:15:29.1234596Z [command]/usr/bin/git version
+2026-09-30T08:15:32.1234597Z git version 2.46.1
+2026-09-30T08:15:35.1234598Z ##[endgroup]
+2026-09-30T08:15:38.1234599Z ##[group]Fetching the repository
+2026-09-30T08:15:41.1234600Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +3f9c2e1a7b:refs/remotes/origin/main
+2026-09-30T08:15:44.1234601Z ##[endgroup]
+2026-09-30T08:15:47.1234602Z ##[group]Run actions/setup-go@v5
+2026-09-30T08:15:50.1234603Z with:
+2026-09-30T08:15:53.1234604Z   go-version-file: go.mod
+2026-09-30T08:15:56.1234605Z   cache: true
+2026-09-30T08:15:59.1234606Z ##[endgroup]
+2026-09-30T08:16:02.1234607Z Setup go version spec 1.23
+2026-09-30T08:16:05.1234608Z Found in cache @ /opt/hostedtoolcache/go/1.23.1/x64
+2026-09-30T08:16:08.1234609Z go version go1.23.1 linux/amd64
+2026-09-30T08:16:11.1234610Z ##[group]Run go vet ./...
+2026-09-30T08:16:14.1234611Z [36;1mgo vet ./...[0m
+2026-09-30T08:16:17.1234612Z shell: /usr/bin/bash -e {0}
+2026-09-30T08:16:20.1234613Z ##[endgroup]
+2026-09-30T08:16:23.1234614Z ##[group]Run go test ./...
+2026-09-30T08:16:26.1234615Z [36;1mgo test ./...[0m
+2026-09-30T08:16:29.1234616Z shell: /usr/bin/bash -e {0}
+2026-09-30T08:16:32.1234617Z ##[endgroup]
+2026-09-30T08:16:35.1234618Z ok  	github.com/niclasedge/git-planner-go/internal/ghrest	0.412s
+2026-09-30T08:16:38.1234619Z --- FAIL: TestLeiste (0.02s)
+2026-09-30T08:16:41.1234620Z     leiste_test.go:42: got "<img src=x onerror=alert(1)><script>alert(2)</script>", want "ok"
+2026-09-30T08:16:44.1234621Z FAIL
+2026-09-30T08:16:47.1234622Z FAIL	github.com/niclasedge/git-planner-go/internal/appctx	0.318s
+2026-09-30T08:16:50.1234623Z [31mFAIL[0m
+2026-09-30T08:16:53.1234624Z ##[error]Process completed with exit code 1.
+2026-09-30T08:16:56.1234625Z Post job cleanup.
+2026-09-30T08:16:59.1234626Z [command]/usr/bin/git version
+2026-09-30T08:17:02.1234627Z git version 2.46.1
+2026-09-30T08:17:05.1234628Z Cleaning up orphan processes

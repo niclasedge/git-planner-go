@@ -1,0 +1,28 @@
+# Base service for the local run (compose.local.yml). Only the variables named
+# below enter the container; the full .env stays outside.
+name: git-planner
+
+services:
+  gkp:
+    build: .
+    image: git-planner:latest
+    container_name: git-planner
+    restart: unless-stopped
+    environment:
+      GITHUB_PAT_PERSONAL: ${GITHUB_PAT_PERSONAL:-}
+      GITHUB_PAT_WORK: ${GITHUB_PAT_WORK:-}
+      GKP_WORK_OWNERS: ${GKP_WORK_OWNERS:-}
+      CC_GH_ACCOUNTS: ${CC_GH_ACCOUNTS:-}
+      GKP_ORIGIN: ${GKP_ORIGIN:-}
+      # Empty = POST (save, MCP) only from inside the container. The
+      # overrides open it for the proxy in front (compose.local.yml).
+      GKP_WRITE_CLIENTS: ${GKP_WRITE_CLIENTS:-}
+      GKP_PUBLIC_ORIGIN: ${GKP_PUBLIC_ORIGIN:-}
+    volumes:
+      # Reports, cache and the project directory survive a rebuild.
+      - gkp-home:/home/gkp
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  gkp-home:

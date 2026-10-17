@@ -1,0 +1,1148 @@
+{
+  "repo": "example-org/git-planner",
+  "stand": "28.9.",
+  "zonen": [
+    {
+      "name": "erledigt",
+      "anzahl": 10
+    },
+    {
+      "name": "jetzt",
+      "anzahl": 3
+    },
+    {
+      "name": "naechste",
+      "anzahl": 10
+    }
+  ],
+  "linien": [
+    {
+      "nummer": 36,
+      "titel": "Repo-Karte",
+      "url": "https://github.com/acme/x/issues/36",
+      "erledigt": 1,
+      "gesamt": 4,
+      "aktiv": 1,
+      "gesperrt": 0
+    },
+    {
+      "nummer": 60,
+      "titel": "Fork-Unterstuetzung",
+      "url": "https://github.com/acme/x/issues/60",
+      "erledigt": 0,
+      "gesamt": 4,
+      "aktiv": 0,
+      "gesperrt": 4
+    },
+    {
+      "nummer": 70,
+      "titel": "PR-Lebenslauf",
+      "url": "https://github.com/acme/x/issues/70",
+      "erledigt": 4,
+      "gesamt": 4,
+      "aktiv": 0,
+      "gesperrt": 0
+    },
+    {
+      "nummer": 0,
+      "titel": "ohne Map",
+      "url": "",
+      "erledigt": 5,
+      "gesamt": 11,
+      "aktiv": 2,
+      "gesperrt": 2
+    }
+  ],
+  "stationen": [
+    {
+      "nummer": 45,
+      "titel": "Sync-Status sichtbar",
+      "url": "https://github.com/acme/x/issues/45",
+      "zone": "erledigt",
+      "slot": 0,
+      "linie": 0,
+      "rang": 0,
+      "marke": "16.9.",
+      "erledigt_am": "16.9.",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 48,
+      "titel": "Liste nach Abhaengigkeiten",
+      "url": "https://github.com/acme/x/issues/48",
+      "zone": "erledigt",
+      "slot": 1,
+      "linie": 0,
+      "rang": 0,
+      "marke": "17.9.",
+      "erledigt_am": "17.9.",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 49,
+      "titel": "Karte: Issues ohne Sub-Issues",
+      "url": "https://github.com/acme/x/issues/49",
+      "zone": "erledigt",
+      "slot": 2,
+      "linie": 36,
+      "rang": 0,
+      "marke": "19.9.",
+      "erledigt_am": "19.9.",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 50,
+      "titel": "Issue-Branches verknuepfen",
+      "url": "https://github.com/acme/x/issues/50",
+      "zone": "erledigt",
+      "slot": 3,
+      "linie": 0,
+      "rang": 0,
+      "marke": "20.9.",
+      "erledigt_am": "20.9.",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 56,
+      "titel": "Archivliste der Changes",
+      "url": "https://github.com/acme/x/issues/56",
+      "zone": "erledigt",
+      "slot": 4,
+      "linie": 0,
+      "rang": 0,
+      "marke": "22.9.",
+      "erledigt_am": "22.9.",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 74,
+      "titel": "PR-Checks in der Zeile",
+      "url": "https://github.com/acme/x/issues/74",
+      "zone": "erledigt",
+      "slot": 5,
+      "linie": 70,
+      "rang": 0,
+      "marke": "23.9.",
+      "erledigt_am": "23.9.",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 76,
+      "titel": "PR-Reviews anzeigen",
+      "url": "https://github.com/acme/x/issues/76",
+      "zone": "erledigt",
+      "slot": 6,
+      "linie": 70,
+      "rang": 0,
+      "marke": "24.9.",
+      "erledigt_am": "24.9.",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 79,
+      "titel": "Branch oder PR anlegen",
+      "url": "https://github.com/acme/x/issues/79",
+      "zone": "erledigt",
+      "slot": 7,
+      "linie": 70,
+      "rang": 0,
+      "marke": "25.9.",
+      "erledigt_am": "25.9.",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 83,
+      "titel": "PR-Lebenslauf Stufenleiste",
+      "url": "https://github.com/acme/x/issues/83",
+      "zone": "erledigt",
+      "slot": 8,
+      "linie": 70,
+      "rang": 0,
+      "marke": "26.9.",
+      "erledigt_am": "26.9.",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 97,
+      "titel": "Docker-Betrieb lokal und netcup",
+      "url": "https://github.com/acme/x/issues/97",
+      "zone": "erledigt",
+      "slot": 9,
+      "linie": 0,
+      "rang": 0,
+      "marke": "27.9.",
+      "erledigt_am": "27.9.",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 98,
+      "titel": "Netz-Schreiben mit Retry",
+      "url": "https://github.com/acme/x/issues/98",
+      "zone": "jetzt",
+      "slot": 0,
+      "linie": 0,
+      "rang": 0,
+      "marke": "",
+      "erledigt_am": "",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false,
+      "branch": "change/netz-retry",
+      "stufe": "im_pr",
+      "aufgaben_erledigt": 6,
+      "aufgaben_gesamt": 6,
+      "pr": 99,
+      "checks": "rot"
+    },
+    {
+      "nummer": 95,
+      "titel": "Heute-Logbuch gruppieren",
+      "url": "https://github.com/acme/x/issues/95",
+      "zone": "jetzt",
+      "slot": 1,
+      "linie": 0,
+      "rang": 0,
+      "marke": "",
+      "erledigt_am": "",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false,
+      "branch": "change/logbuch-gruppen",
+      "stufe": "gate1",
+      "aufgaben_gesamt": 5
+    },
+    {
+      "nummer": 101,
+      "titel": "Repo-Karte als Folge",
+      "url": "https://github.com/acme/x/issues/101",
+      "zone": "jetzt",
+      "slot": 2,
+      "linie": 36,
+      "rang": 0,
+      "marke": "",
+      "erledigt_am": "",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false,
+      "branch": "change/repo-karte-folge",
+      "stufe": "gate2",
+      "aufgaben_erledigt": 2,
+      "aufgaben_gesamt": 7
+    },
+    {
+      "nummer": 102,
+      "titel": "Fork-Repos in der Leiste",
+      "url": "https://github.com/acme/x/issues/102",
+      "zone": "naechste",
+      "slot": 0,
+      "linie": 60,
+      "rang": 1,
+      "marke": "1",
+      "erledigt_am": "",
+      "wartet_auf": [
+        88
+      ],
+      "gesperrt": true,
+      "bereit": false,
+      "kritisch": true
+    },
+    {
+      "nummer": 103,
+      "titel": "Karte: Hebel-Spalte",
+      "url": "https://github.com/acme/x/issues/103",
+      "zone": "naechste",
+      "slot": 1,
+      "linie": 36,
+      "rang": 2,
+      "marke": "2",
+      "erledigt_am": "",
+      "wartet_auf": [
+        101
+      ],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 104,
+      "titel": "Token-Rotation melden",
+      "url": "https://github.com/acme/x/issues/104",
+      "zone": "naechste",
+      "slot": 2,
+      "linie": 60,
+      "rang": 3,
+      "marke": "3",
+      "erledigt_am": "",
+      "wartet_auf": [
+        88
+      ],
+      "gesperrt": true,
+      "bereit": false,
+      "kritisch": true
+    },
+    {
+      "nummer": 105,
+      "titel": "Logbuch-Export Markdown",
+      "url": "https://github.com/acme/x/issues/105",
+      "zone": "naechste",
+      "slot": 3,
+      "linie": 0,
+      "rang": 4,
+      "marke": "4",
+      "erledigt_am": "",
+      "wartet_auf": [
+        95
+      ],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 106,
+      "titel": "Archiv komprimieren",
+      "url": "https://github.com/acme/x/issues/106",
+      "zone": "naechste",
+      "slot": 4,
+      "linie": 0,
+      "rang": 5,
+      "marke": "5",
+      "erledigt_am": "",
+      "wartet_auf": [
+        91
+      ],
+      "gesperrt": true,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 107,
+      "titel": "Fork-Sync im Hintergrund",
+      "url": "https://github.com/acme/x/issues/107",
+      "zone": "naechste",
+      "slot": 5,
+      "linie": 60,
+      "rang": 6,
+      "marke": "6",
+      "erledigt_am": "",
+      "wartet_auf": [
+        102
+      ],
+      "gesperrt": true,
+      "bereit": false,
+      "kritisch": true
+    },
+    {
+      "nummer": 108,
+      "titel": "Retry-Zaehler anzeigen",
+      "url": "https://github.com/acme/x/issues/108",
+      "zone": "naechste",
+      "slot": 6,
+      "linie": 0,
+      "rang": 7,
+      "marke": "7",
+      "erledigt_am": "",
+      "wartet_auf": [
+        98
+      ],
+      "gesperrt": false,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 109,
+      "titel": "Archiv durchsuchen",
+      "url": "https://github.com/acme/x/issues/109",
+      "zone": "naechste",
+      "slot": 7,
+      "linie": 0,
+      "rang": 8,
+      "marke": "8",
+      "erledigt_am": "",
+      "wartet_auf": [
+        106
+      ],
+      "gesperrt": true,
+      "bereit": false,
+      "kritisch": false
+    },
+    {
+      "nummer": 110,
+      "titel": "Dark-Mode Karte",
+      "url": "https://github.com/acme/x/issues/110",
+      "zone": "naechste",
+      "slot": 8,
+      "linie": 36,
+      "rang": 9,
+      "marke": "9",
+      "erledigt_am": "",
+      "wartet_auf": [],
+      "gesperrt": false,
+      "bereit": true,
+      "kritisch": false
+    },
+    {
+      "nummer": 111,
+      "titel": "Fork-Konflikte loesen",
+      "url": "https://github.com/acme/x/issues/111",
+      "zone": "naechste",
+      "slot": 9,
+      "linie": 60,
+      "rang": 10,
+      "marke": "10",
+      "erledigt_am": "",
+      "wartet_auf": [
+        107,
+        104
+      ],
+      "gesperrt": true,
+      "bereit": false,
+      "kritisch": true
+    }
+  ],
+  "fragen": [
+    {
+      "nummer": 88,
+      "titel": "Token-Quelle fuer Forks?",
+      "url": "https://github.com/acme/x/issues/88",
+      "wortlaut": "Fork-Repos: PAT des Forks oder des Upstreams?",
+      "wer": "alex",
+      "seit_tagen": 6,
+      "sperrt": [
+        102,
+        104
+      ],
+      "hebel": 4,
+      "prio": 1,
+      "kritisch": true
+    },
+    {
+      "nummer": 91,
+      "titel": "Archiv-Format festlegen",
+      "url": "https://github.com/acme/x/issues/91",
+      "wortlaut": "Archiv als JSON-Lines oder Ordner je Monat?",
+      "wer": "alex",
+      "seit_tagen": 3,
+      "sperrt": [
+        106
+      ],
+      "hebel": 2,
+      "prio": 1,
+      "kritisch": false
+    },
+    {
+      "nummer": 93,
+      "titel": "Rang-Regel bei Gleichstand",
+      "url": "https://github.com/acme/x/issues/93",
+      "wortlaut": "Aelteres oder zuletzt aktives Issue zuerst?",
+      "wer": "",
+      "seit_tagen": 1,
+      "sperrt": [],
+      "hebel": 0,
+      "prio": 2,
+      "kritisch": false
+    }
+  ],
+  "kanten": [
+    {
+      "von": 88,
+      "nach": 102,
+      "art": "frage",
+      "kritisch": true
+    },
+    {
+      "von": 88,
+      "nach": 104,
+      "art": "frage",
+      "kritisch": true
+    },
+    {
+      "von": 91,
+      "nach": 106,
+      "art": "frage",
+      "kritisch": false
+    },
+    {
+      "von": 95,
+      "nach": 105,
+      "art": "aktiv",
+      "kritisch": false
+    },
+    {
+      "von": 98,
+      "nach": 108,
+      "art": "aktiv",
+      "kritisch": false
+    },
+    {
+      "von": 101,
+      "nach": 103,
+      "art": "aktiv",
+      "kritisch": false
+    },
+    {
+      "von": 102,
+      "nach": 107,
+      "art": "folge",
+      "kritisch": true
+    },
+    {
+      "von": 104,
+      "nach": 111,
+      "art": "folge",
+      "kritisch": true
+    },
+    {
+      "von": 106,
+      "nach": 109,
+      "art": "folge",
+      "kritisch": false
+    },
+    {
+      "von": 107,
+      "nach": 111,
+      "art": "folge",
+      "kritisch": true
+    }
+  ],
+  "kopf": {
+    "erledigt": 10,
+    "aktiv": 3,
+    "naechste": 10,
+    "fragen": 3,
+    "p1": [
+      {
+        "nummer": 88,
+        "haelt": 4
+      },
+      {
+        "nummer": 91,
+        "haelt": 2
+      }
+    ],
+    "bereit": 110
+  },
+  "kritisch": 88,
+  "ziel": "Blocker schnell klaeren: was war, was laeuft, was blockiert, was kommt.",
+  "gruppen": [
+    {
+      "nummer": 60,
+      "titel": "Fork-Unterstuetzung",
+      "url": "https://github.com/acme/x/issues/60",
+      "erledigt": 0,
+      "gesamt": 4,
+      "anzahl_aktiv": 0,
+      "anzahl_ausstehend": 4,
+      "p1_frage": 88,
+      "hebel": 4,
+      "fragen": [
+        {
+          "nummer": 88,
+          "titel": "Token-Quelle fuer Forks?",
+          "url": "https://github.com/acme/x/issues/88",
+          "wortlaut": "Fork-Repos: PAT des Forks oder des Upstreams?",
+          "wer": "alex",
+          "seit_tagen": 6,
+          "hebel": 4,
+          "prio": 1,
+          "chips": [
+            {
+              "nummer": 102,
+              "art": "direkt"
+            },
+            {
+              "nummer": 104,
+              "art": "direkt"
+            },
+            {
+              "nummer": 107,
+              "art": "transitiv"
+            },
+            {
+              "nummer": 111,
+              "art": "transitiv"
+            }
+          ],
+          "schaetzung": 0
+        }
+      ],
+      "aktiv": [],
+      "ausstehend": [
+        {
+          "nummer": 104,
+          "titel": "Token-Rotation melden",
+          "url": "https://github.com/acme/x/issues/104",
+          "status": "gesperrt",
+          "rang": 3,
+          "tiefe": 0,
+          "wartet_auf": [
+            {
+              "nummer": 88,
+              "art": "frage"
+            }
+          ],
+          "bereit": false,
+          "gesperrt": true,
+          "schaetzung": 0
+        },
+        {
+          "nummer": 102,
+          "titel": "Fork-Repos in der Leiste",
+          "url": "https://github.com/acme/x/issues/102",
+          "status": "gesperrt",
+          "rang": 1,
+          "tiefe": 0,
+          "wartet_auf": [
+            {
+              "nummer": 88,
+              "art": "frage"
+            }
+          ],
+          "bereit": false,
+          "gesperrt": true,
+          "schaetzung": 3
+        },
+        {
+          "nummer": 107,
+          "titel": "Fork-Sync im Hintergrund",
+          "url": "https://github.com/acme/x/issues/107",
+          "status": "gesperrt",
+          "rang": 6,
+          "tiefe": 1,
+          "unter": 102,
+          "wartet_auf": [
+            {
+              "nummer": 102,
+              "art": "issue"
+            }
+          ],
+          "haengt_an": 88,
+          "bereit": false,
+          "gesperrt": true,
+          "schaetzung": 0
+        },
+        {
+          "nummer": 111,
+          "titel": "Fork-Konflikte loesen",
+          "url": "https://github.com/acme/x/issues/111",
+          "status": "gesperrt",
+          "rang": 10,
+          "tiefe": 2,
+          "unter": 107,
+          "wartet_auf": [
+            {
+              "nummer": 107,
+              "art": "issue"
+            },
+            {
+              "nummer": 104,
+              "art": "issue"
+            }
+          ],
+          "haengt_an": 88,
+          "bereit": false,
+          "gesperrt": true,
+          "schaetzung": 0
+        }
+      ],
+      "gemergt": [],
+      "gemergt_anfangs": 3
+    },
+    {
+      "nummer": 36,
+      "titel": "Repo-Karte",
+      "url": "https://github.com/acme/x/issues/36",
+      "erledigt": 1,
+      "gesamt": 4,
+      "anzahl_aktiv": 1,
+      "anzahl_ausstehend": 2,
+      "p1_frage": 0,
+      "hebel": 0,
+      "fragen": [],
+      "aktiv": [
+        {
+          "nummer": 101,
+          "titel": "Repo-Karte als Folge",
+          "url": "https://github.com/acme/x/issues/101",
+          "status": "aktiv",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "branch": "change/repo-karte-folge",
+          "stufe": "gate2",
+          "aufgaben_erledigt": 2,
+          "aufgaben_gesamt": 7,
+          "geaendert": "vor 2 h",
+          "geaendert_voll": "Commit vor 2 h",
+          "schaetzung": 0
+        }
+      ],
+      "ausstehend": [
+        {
+          "nummer": 103,
+          "titel": "Karte: Hebel-Spalte",
+          "url": "https://github.com/acme/x/issues/103",
+          "status": "wartet",
+          "rang": 2,
+          "tiefe": 0,
+          "wartet_auf": [
+            {
+              "nummer": 101,
+              "art": "aktiv"
+            }
+          ],
+          "bereit": false,
+          "gesperrt": false,
+          "schaetzung": 0
+        },
+        {
+          "nummer": 110,
+          "titel": "Dark-Mode Karte",
+          "url": "https://github.com/acme/x/issues/110",
+          "status": "bereit",
+          "rang": 9,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": true,
+          "gesperrt": false,
+          "schaetzung": 0
+        }
+      ],
+      "gemergt": [
+        {
+          "nummer": 49,
+          "titel": "Karte: Issues ohne Sub-Issues",
+          "url": "https://github.com/acme/x/issues/49",
+          "status": "gemergt",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "geaendert": "19. Sept.",
+          "geaendert_voll": "19.09.2026 10:00",
+          "schaetzung": 0,
+          "erledigt_am": "19.9.",
+          "change": "karte-issues",
+          "gemergt_mit": {
+            "nummer": 50,
+            "titel": "Karte: Issues ohne Sub-Issues",
+            "url": "https://github.com/acme/x/issues/50",
+            "gemergt_am": "2026-09-19T09:30:00Z"
+          }
+        }
+      ],
+      "gemergt_anfangs": 3
+    },
+    {
+      "nummer": 70,
+      "titel": "PR-Lebenslauf",
+      "url": "https://github.com/acme/x/issues/70",
+      "erledigt": 4,
+      "gesamt": 4,
+      "anzahl_aktiv": 0,
+      "anzahl_ausstehend": 0,
+      "p1_frage": 0,
+      "hebel": 0,
+      "fragen": [],
+      "aktiv": [],
+      "ausstehend": [],
+      "gemergt": [
+        {
+          "nummer": 83,
+          "titel": "PR-Lebenslauf Stufenleiste",
+          "url": "https://github.com/acme/x/issues/83",
+          "status": "gemergt",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "geaendert": "26. Sept.",
+          "geaendert_voll": "26.09.2026 10:00",
+          "schaetzung": 0,
+          "erledigt_am": "26.9.",
+          "change": "pr-lebenslauf",
+          "gemergt_mit": {
+            "nummer": 84,
+            "titel": "PR-Lebenslauf Stufenleiste",
+            "url": "https://github.com/acme/x/issues/84",
+            "gemergt_am": "2026-09-26T09:30:00Z"
+          }
+        },
+        {
+          "nummer": 79,
+          "titel": "Branch oder PR anlegen",
+          "url": "https://github.com/acme/x/issues/79",
+          "status": "gemergt",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "geaendert": "25. Sept.",
+          "geaendert_voll": "25.09.2026 10:00",
+          "schaetzung": 0,
+          "erledigt_am": "25.9.",
+          "change": "pr-anlegen",
+          "gemergt_mit": {
+            "nummer": 80,
+            "titel": "Branch oder PR anlegen",
+            "url": "https://github.com/acme/x/issues/80",
+            "gemergt_am": "2026-09-25T09:30:00Z"
+          }
+        },
+        {
+          "nummer": 76,
+          "titel": "PR-Reviews anzeigen",
+          "url": "https://github.com/acme/x/issues/76",
+          "status": "gemergt",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "geaendert": "24. Sept.",
+          "geaendert_voll": "24.09.2026 10:00",
+          "schaetzung": 0,
+          "erledigt_am": "24.9.",
+          "change": "pr-reviews",
+          "gemergt_mit": {
+            "nummer": 77,
+            "titel": "PR-Reviews anzeigen",
+            "url": "https://github.com/acme/x/issues/77",
+            "gemergt_am": "2026-09-24T09:30:00Z"
+          }
+        },
+        {
+          "nummer": 74,
+          "titel": "PR-Checks in der Zeile",
+          "url": "https://github.com/acme/x/issues/74",
+          "status": "gemergt",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "geaendert": "23. Sept.",
+          "geaendert_voll": "23.09.2026 10:00",
+          "schaetzung": 0,
+          "erledigt_am": "23.9.",
+          "change": "pr-checks",
+          "gemergt_mit": {
+            "nummer": 75,
+            "titel": "PR-Checks in der Zeile",
+            "url": "https://github.com/acme/x/issues/75",
+            "gemergt_am": "2026-09-23T09:30:00Z"
+          }
+        }
+      ],
+      "gemergt_anfangs": 3
+    },
+    {
+      "nummer": 0,
+      "titel": "ohne Parent",
+      "url": "",
+      "erledigt": 5,
+      "gesamt": 11,
+      "anzahl_aktiv": 2,
+      "anzahl_ausstehend": 4,
+      "p1_frage": 91,
+      "hebel": 2,
+      "fragen": [
+        {
+          "nummer": 91,
+          "titel": "Archiv-Format festlegen",
+          "url": "https://github.com/acme/x/issues/91",
+          "wortlaut": "Archiv als JSON-Lines oder Ordner je Monat?",
+          "wer": "alex",
+          "seit_tagen": 3,
+          "hebel": 2,
+          "prio": 1,
+          "chips": [
+            {
+              "nummer": 106,
+              "art": "direkt"
+            },
+            {
+              "nummer": 109,
+              "art": "transitiv"
+            }
+          ],
+          "schaetzung": 0
+        },
+        {
+          "nummer": 93,
+          "titel": "Rang-Regel bei Gleichstand",
+          "url": "https://github.com/acme/x/issues/93",
+          "wortlaut": "Aelteres oder zuletzt aktives Issue zuerst?",
+          "wer": "",
+          "seit_tagen": 1,
+          "hebel": 0,
+          "prio": 2,
+          "chips": [],
+          "schaetzung": 0
+        }
+      ],
+      "aktiv": [
+        {
+          "nummer": 98,
+          "titel": "Netz-Schreiben mit Retry",
+          "url": "https://github.com/acme/x/issues/98",
+          "status": "aktiv",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "branch": "change/netz-retry",
+          "stufe": "im_pr",
+          "aufgaben_erledigt": 6,
+          "aufgaben_gesamt": 6,
+          "pr": 99,
+          "checks": "rot",
+          "geaendert": "vor 5 h",
+          "geaendert_voll": "Commit vor 5 h",
+          "schaetzung": 0
+        },
+        {
+          "nummer": 95,
+          "titel": "Heute-Logbuch gruppieren",
+          "url": "https://github.com/acme/x/issues/95",
+          "status": "aktiv",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "branch": "change/logbuch-gruppen",
+          "stufe": "gate1",
+          "aufgaben_gesamt": 5,
+          "geaendert": "vor 1 T",
+          "geaendert_voll": "Commit vor 1 T",
+          "schaetzung": 0
+        }
+      ],
+      "ausstehend": [
+        {
+          "nummer": 105,
+          "titel": "Logbuch-Export Markdown",
+          "url": "https://github.com/acme/x/issues/105",
+          "status": "wartet",
+          "rang": 4,
+          "tiefe": 0,
+          "wartet_auf": [
+            {
+              "nummer": 95,
+              "art": "aktiv"
+            }
+          ],
+          "bereit": false,
+          "gesperrt": false,
+          "schaetzung": 0
+        },
+        {
+          "nummer": 106,
+          "titel": "Archiv komprimieren",
+          "url": "https://github.com/acme/x/issues/106",
+          "status": "gesperrt",
+          "rang": 5,
+          "tiefe": 0,
+          "wartet_auf": [
+            {
+              "nummer": 91,
+              "art": "frage"
+            }
+          ],
+          "bereit": false,
+          "gesperrt": true,
+          "schaetzung": 3
+        },
+        {
+          "nummer": 109,
+          "titel": "Archiv durchsuchen",
+          "url": "https://github.com/acme/x/issues/109",
+          "status": "gesperrt",
+          "rang": 8,
+          "tiefe": 1,
+          "unter": 106,
+          "wartet_auf": [
+            {
+              "nummer": 106,
+              "art": "issue"
+            }
+          ],
+          "haengt_an": 91,
+          "bereit": false,
+          "gesperrt": true,
+          "schaetzung": 0
+        },
+        {
+          "nummer": 108,
+          "titel": "Retry-Zaehler anzeigen",
+          "url": "https://github.com/acme/x/issues/108",
+          "status": "wartet",
+          "rang": 7,
+          "tiefe": 0,
+          "wartet_auf": [
+            {
+              "nummer": 98,
+              "art": "aktiv"
+            }
+          ],
+          "bereit": false,
+          "gesperrt": false,
+          "schaetzung": 0
+        }
+      ],
+      "gemergt": [
+        {
+          "nummer": 97,
+          "titel": "Docker-Betrieb lokal und netcup",
+          "url": "https://github.com/acme/x/issues/97",
+          "status": "gemergt",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "geaendert": "27. Sept.",
+          "geaendert_voll": "27.09.2026 10:00",
+          "schaetzung": 0,
+          "erledigt_am": "27.9.",
+          "change": "docker-betrieb",
+          "gemergt_mit": {
+            "nummer": 98,
+            "titel": "Docker-Betrieb lokal und netcup",
+            "url": "https://github.com/acme/x/issues/98",
+            "gemergt_am": "2026-09-27T09:30:00Z"
+          }
+        },
+        {
+          "nummer": 56,
+          "titel": "Archivliste der Changes",
+          "url": "https://github.com/acme/x/issues/56",
+          "status": "gemergt",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "geaendert": "22. Sept.",
+          "geaendert_voll": "22.09.2026 10:00",
+          "schaetzung": 0,
+          "erledigt_am": "22.9.",
+          "change": "archiv-liste",
+          "gemergt_mit": {
+            "nummer": 57,
+            "titel": "Archivliste der Changes",
+            "url": "https://github.com/acme/x/issues/57",
+            "gemergt_am": "2026-09-22T09:30:00Z"
+          }
+        },
+        {
+          "nummer": 50,
+          "titel": "Issue-Branches verknuepfen",
+          "url": "https://github.com/acme/x/issues/50",
+          "status": "gemergt",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "geaendert": "20. Sept.",
+          "geaendert_voll": "20.09.2026 10:00",
+          "schaetzung": 0,
+          "erledigt_am": "20.9.",
+          "change": "issue-branches",
+          "gemergt_mit": {
+            "nummer": 51,
+            "titel": "Issue-Branches verknuepfen",
+            "url": "https://github.com/acme/x/issues/51",
+            "gemergt_am": "2026-09-20T09:30:00Z"
+          }
+        },
+        {
+          "nummer": 48,
+          "titel": "Liste nach Abhaengigkeiten",
+          "url": "https://github.com/acme/x/issues/48",
+          "status": "gemergt",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "geaendert": "17. Sept.",
+          "geaendert_voll": "17.09.2026 10:00",
+          "schaetzung": 0,
+          "erledigt_am": "17.9.",
+          "change": "liste-abhaengigkeiten",
+          "gemergt_mit": {
+            "nummer": 49,
+            "titel": "Liste nach Abhaengigkeiten",
+            "url": "https://github.com/acme/x/issues/49",
+            "gemergt_am": "2026-09-17T09:30:00Z"
+          }
+        },
+        {
+          "nummer": 45,
+          "titel": "Sync-Status sichtbar",
+          "url": "https://github.com/acme/x/issues/45",
+          "status": "gemergt",
+          "rang": 0,
+          "tiefe": 0,
+          "wartet_auf": [],
+          "bereit": false,
+          "gesperrt": false,
+          "geaendert": "16. Sept.",
+          "geaendert_voll": "16.09.2026 10:00",
+          "schaetzung": 0,
+          "erledigt_am": "16.9.",
+          "change": "sync-status",
+          "gemergt_mit": {
+            "nummer": 46,
+            "titel": "Sync-Status sichtbar",
+            "url": "https://github.com/acme/x/issues/46",
+            "gemergt_am": "2026-09-16T09:30:00Z"
+          }
+        }
+      ],
+      "gemergt_anfangs": 3
+    }
+  ],
+  "quellen": []
+}

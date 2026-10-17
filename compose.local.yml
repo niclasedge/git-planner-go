@@ -1,0 +1,10 @@
+# Local run: published on loopback only.
+services:
+  gkp:
+    ports:
+      - "127.0.0.1:${GKP_PORT:-8765}:8765"
+    # Every peer is the docker gateway and the port is loopback-only, so
+    # "alle" means: this machine. Host/Origin must name the published port.
+    environment:
+      GKP_WRITE_CLIENTS: alle
+      GKP_PUBLIC_ORIGIN: http://127.0.0.1:${GKP_PORT:-8765}
